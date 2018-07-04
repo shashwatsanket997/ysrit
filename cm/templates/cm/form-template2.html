@@ -1,0 +1,17 @@
+{% load widget_tweaks %}
+<div class="row">
+<div class="w-50 mx-4 form-group">
+{% for field in form %}
+        <div class="col-sm-offset-2 col-sm-10">
+            <span class="text-danger small">{{ field.errors }}</span>
+        </div>
+        <strong>{{field.label_tag}}</strong>
+        {% if "Dob" in field.label %}
+        {% render_field field class="form-control" type="Date"%}
+        {% else %}
+        {% render_field field class="form-control"%}
+        {% endif %}
+    
+{% endfor %}
+</div>
+</div>

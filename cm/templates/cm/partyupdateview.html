@@ -1,0 +1,78 @@
+{% extends 'cm/base_header.html' %}
+{% block body %}
+
+<div class="content-wrapper">
+  <!-- Breadcrumbs-->
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{% url 'cm:index' %}">Dashboard</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a href="{% url 'cm:cmhome' %}">Contact Management</a>
+    </li>
+    <li class="breadcrumb-item active">Party DataForm Update</li>
+  </ol>
+    <div class="container" style="background:rgb(117, 174, 231)";></div>
+<h2> Party Data Update   <a  class="btn btn-outline-info" href="{% url 'cm:partydata' %}"  >DataBase</a>  <a  class="btn btn-outline-info" href="{% url 'cm:create-constency' %}">Create New Constency</a> </h2>
+<form action="{% url 'cm:party-delete' pk %}" method="post" style="display: inline;">
+  {% csrf_token %}
+  <input type="hidden" name="party_id" value="{{ pk }}"/>
+       <button type="submit" class="btn btn-danger ">Delete
+        </button>
+</form>
+
+  
+<form class="form-horizontal" method="POST" style="background:#E9ECEF">
+    {% csrf_token %}
+    {% if error_message %}
+    <p><strong>{{ error_message }}</strong></p>
+    {% endif %}
+    {% include 'cm/form-template2.html' %}
+    <div class="form-group col-sm-4 col-md-3">
+    <button type="submit"  class=" btn mx-auto  btn-success ">Submit</button>
+    </div>
+</div>
+</form>
+
+</div>
+
+</div>
+
+
+
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<script>
+  $("#id_mandal").change(function () {
+    var url = $("#PartyForm").attr("data-gp-url");  // get the url of the `load_cities` view
+    var mandalId = $(this).val();  // get the selected country ID from the HTML input
+    console.log(mandalId)
+    $.ajax({                       // initialize an AJAX request
+      url: "{% url 'cm:ajax_load_gram_panchayat'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+      data: {
+        'mandal': mandalId       // add the country id to the GET parameters
+      },
+      success: function (data) {   // `data` is the return of the `load_cities` view function
+        $("#id_gram_panchayat").html(data);  // replace the contents of the city input with the data that came from the server
+      }
+    });
+  });
+</script>
+<script>
+    $("#id_gram_panchayat").change(function () {
+      var url = $("#PartyForm").attr("data-village-url");  // get the url of the `load_cities` view
+      var gpId = $(this).val();  // get the selected country ID from the HTML input
+      console.log(gpId)
+      $.ajax({                       // initialize an AJAX request
+        url: "{% url 'cm:ajax_load_village'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+        data: {
+          'gram_panchayat': gpId       // add the country id to the GET parameters
+        },
+        success: function (data) {   // `data` is the return of the `load_cities` view function
+          $("#id_village").html(data);  // replace the contents of the city input with the data that came from the server
+        }
+      });
+    });
+  </script>
+  {%endblock%}

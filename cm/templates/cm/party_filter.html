@@ -1,0 +1,26 @@
+<form method="get" >
+        <div class="well">
+          <h4 style="margin-top: 0">Filter</h4>
+          <div class="row">
+            <div class="form-group col-sm-4 col-md-3">
+              {{ filter.form.mandal.label_tag }}
+              {% render_field filter.form.mandal class="form-control" %}
+            </div>
+            <div class="form-group col-sm-4 col-md-3">
+              {{ filter.form.gram_panchayat.label_tag }}
+              {% render_field filter.form.gram_panchayat class="form-control" %}
+            </div>
+            <div class="form-group col-sm-4 col-md-3">
+              {{ filter.form.village.label_tag }}
+              {% render_field filter.form.village class="form-control" %}
+            </div>
+            <div class="form-group col-sm-4 col-md-3">
+              {{ filter.form.party_position.label_tag }}
+              {% render_field filter.form.party_position class="form-control" %}
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <span class="glyphicon glyphicon-search"></span> Search
+            </button>
+            </div>
+          </div>
+      </form>

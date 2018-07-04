@@ -1,0 +1,142 @@
+{% extends 'cm/base_header.html' %}
+{% load widget_tweaks %}
+{% block body %}
+<div class="content-wrapper">
+  <div class="container-fluid">
+      <!-- Breadcrumbs-->
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'cm:index' %}">Dashboard</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'cm:cmhome' %}">Contact Management</a>
+        </li>
+        <li class="breadcrumb-item active">Party DataTable View</li>
+      </ol>
+      <!--Filter Data-->
+      <a class="btn btn-primary btn-md" href="{% url 'cm:filter' %}" ><span class="fa fa-filter"></span>  Filter</a>
+      {% if not form%}
+      <a class="btn btn-primary btn-md" href="{% url 'cm:database' %}" id="export"  ><span class="fa fa-download"></span>  Export Database</a>
+      {% else %}
+      <a class="btn btn-primary btn-md" href="{% url 'cm:partydata-export' p_ids %}"   ><span class="fa fa-download"></span>  Export Database</a>
+      {% endif %}
+      <a class="btn btn-primary btn-md" href="{% url 'cm:partydata-import' %}"   ><span class="fa fa-upload"></span>  Import</a>
+      <a class="btn btn-primary btn-md" href="{% url 'cm:person_add' %}"   ><span class="fa fa-pencil"></span>  Party Data Form</a>
+    
+      <form method="POST" role="form" >
+          {% csrf_token %}
+          {% if error_message %}
+          <p><strong>{{ error_message }}</strong></p>
+          {% endif %}
+          {% include 'cm/form-template1.html'  %}
+        </form>
+  
+      
+      <!-- Example DataTables Card-->
+      <div class="card mb-3">
+        <div class="card-header">
+          <i class="fa fa-database"></i> DataBase
+          <div align="right" id="dataTable_filter" class="dataTables_filter"><label><input class="form-control form-control-sm" id="search" placeholder="Search by name" aria-controls="dataTable" onkeyup="tablesearch()" type="search"></label></div>
+        </div>
+          <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+              <thead>
+                <tr>
+                  
+                  <th>Name</th>
+                  <th>Father Name</th>
+                  <th>DOB</th>
+                  <th>Phone Number</th>
+                  <th>Mandal</th>
+                  <th>Gram Panchayat</th>
+                  <th>Village</th>
+                  <th>Party Position</th>
+                  <th>Profile</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for data in object_list %}
+                <tr>
+                  <td><a href="{% url 'cm:update' data.pk %}">{{data.name}}</a></td>
+                  <td>{{data.father_name}}</td>
+                  <td>{{data.dob}}</td>
+                  <td>{{data.phone_number}}</td>
+                  <td>{{data.mandal}}</td>
+                  <td>{{data.gram_panchayat}}</td>
+                  <td>{{data.village}}</td>
+                  <td>{{data.party_position}}</td>
+                  {% if data.profile %}
+                  <td><img src="{{data.profile.url}}" class="img-thumbnail" /></td>
+                  {% else %}
+                  <td><img src="#" class="img-thumbnail" /></td>
+                  {% endif %}
+                </tr>
+                {%endfor%}
+              </tbody>
+            </table>
+          </div>
+      </div>
+      <div class="card-footer small text-muted" id="total">YSRIT Party Data Database</div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<script>
+  $("#id_mandal").change(function () {
+    var url = $("#PartyForm").attr("data-gp-url");  // get the url of the `load_cities` view
+    var mandalId = $(this).val();  // get the selected country ID from the HTML input
+    console.log(mandalId)
+    $.ajax({                       // initialize an AJAX request
+      url: "{% url 'cm:ajax_load_gram_panchayat'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+      data: {
+        'mandal': mandalId       // add the country id to the GET parameters
+      },
+      success: function (data) {   // `data` is the return of the `load_cities` view function
+        $("#id_gram_panchayat").html(data);  // replace the contents of the city input with the data that came from the server
+      }
+    });
+  });
+</script>
+<script>
+    $("#id_gram_panchayat").change(function () {
+      var url = $("#PartyForm").attr("data-village-url");  // get the url of the `load_cities` view
+      var gpId = $(this).val();  // get the selected country ID from the HTML input
+      console.log(gpId)
+      $.ajax({                       // initialize an AJAX request
+        url: "{% url 'cm:ajax_load_village'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+        data: {
+          'gram_panchayat': gpId       // add the country id to the GET parameters
+        },
+        success: function (data) {   // `data` is the return of the `load_cities` view function
+          $("#id_village").html(data);  // replace the contents of the city input with the data that came from the server
+        }
+      });
+    });
+  </script>
+<script>
+function tablesearch(){
+
+var input,filter, table,tr,td,i;
+input = document.getElementById("search");
+filter = input.value.toUpperCase();
+table = document.getElementById("dataTable");
+tr = table.getElementsByTagName("tr");
+for (i=0;i<tr.length;i++)
+{
+
+  td = tr[i].getElementsByTagName("td")[0];
+  if (td) {
+    if (td.innerHTML.toUpperCase().indexOf(filter) > -1) {
+      tr[i].style.display = "";
+    } else {
+      tr[i].style.display = "none";
+    }
+  }
+}
+}
+</script>
+
+
+{% endblock %}
+    

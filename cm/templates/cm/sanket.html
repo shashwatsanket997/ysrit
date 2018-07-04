@@ -1,0 +1,11 @@
+<form method="POST" role="form" >
+        {% csrf_token %}
+        {% if error_message %}
+        <p><strong>{{ error_message }}</strong></p>
+        {% endif %}
+        {% include 'cm/form-template.html' %}
+        <div class="form-group col-sm-4 col-md-3">
+        <button type="submit"  class="btn btn-success">Submit</button>
+        </div>
+
+        </form>
