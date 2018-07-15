@@ -1,0 +1,161 @@
+{% extends 'cm/base_header.html' %}
+{% block body %}
+<div class="content-wrapper">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{% url 'cm:index' %}">Dashboard</a>
+        </li>
+        <li class="breadcrumb-item active">SMS Management</li>
+    </ol> 
+    &nbsp;&nbsp;<a class="btn btn-outline-primary" onclick="myFunction()"   ><span class="fa fa-address-card"></span>  Get Contacts</a>
+<div class="filter_table" id="filter" style="display:none">
+    <form method="POST" role="form" >
+        {% csrf_token %}
+        {% if error_message %}
+        <p><strong>{{ error_message }}</strong></p>
+        {% endif %}
+        {% include 'cm/form-template3.html'  %}
+      </form>
+</div>
+
+<div class="row">
+<div class="col-sm-6">
+<!--Sms Block-->
+<div class="jumbotron">
+<center><h3>Send SMS</h3></center>
+<hr>
+<form method="POST" >
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="mobnos">Mobile Numbers</label>
+                <input type="text" class="form-control" id="mobnos" name="mobnos" required>
+              </div>
+              <div class="form-group">
+                <label for="msg">Message</label>
+                <textarea class="form-control" rows="8" id="msg" name="msg" required></textarea>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-success" name="sms">Send SMS</button>
+        </div>
+</form>
+{% if num %}
+<script>
+    document.getElementById('mobnos').value="{{num}}";
+</script>
+{%endif%}
+</div>
+
+</div>
+<div class="col-sm-6">
+
+ <!-- Tabular columns-->
+ <div class="card mb-3">
+        <div class="card-header">
+          <i class="fa fa-database"></i> Instant Search On Database
+        </div>
+          <div class="card-body">
+          <div class="table-responsive">
+            
+            <button type="button"  onclick="myfunction()" id="sync_num" class="btn btn-success">Sync Number</button>
+            <hr>
+            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+              <thead>
+                <tr>
+                  <th>Select</th>
+                  <th>Name</th>
+                  <th>Phone Number</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for data in object_list %}
+                <tr>
+                  <td><input type="checkbox" name="slct" id="slct" value="{{data.pk}}"</td>
+                  <td>{{data.name}}</td>
+                  <td>{{data.phone_number}}</td>
+                  </tr>
+                {%endfor%}
+              </tbody>
+            </table>
+        
+          </div>
+      
+</div>
+
+</div>
+
+
+
+</div>
+</div>
+<script type="text/javascript">
+function myfunction() {
+    var tableControl= document.getElementById('dataTable');
+   var arrayOfValues = [];
+   $('input:checkbox:checked', tableControl).each(function() {
+    arrayOfValues.push($(this).closest('tr').find('td:last').text());
+    }).get();
+    console.log(arrayOfValues);
+    var mob=document.getElementById('mobnos').value
+    console.log(mob);
+    var l=arrayOfValues.length
+    for(i in arrayOfValues){  
+    mob=mob+","+arrayOfValues[i]
+    }
+    document.getElementById('mobnos').value=mob;
+
+
+
+};
+</script>
+<script>
+    function myFunction(){
+     
+        var x=document.getElementById("filter");
+        if(x.style.display === "none")
+        {
+            x.style.display="block"
+        }
+        else
+        {
+            x.style.display="none"
+        }
+    }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+    <script>
+      $("#id_mandal").change(function () {
+        var url = $("#PartyForm").attr("data-gp-url");  // get the url of the `load_cities` view
+        var mandalId = $(this).val();  // get the selected country ID from the HTML input
+        console.log(mandalId)
+        $.ajax({                       // initialize an AJAX request
+          url: "{% url 'cm:ajax_load_gram_panchayat'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+          data: {
+            'mandal': mandalId       // add the country id to the GET parameters
+          },
+          success: function (data) {   // `data` is the return of the `load_cities` view function
+            $("#id_gram_panchayat").html(data);  // replace the contents of the city input with the data that came from the server
+          }
+        });
+      });
+    </script>
+    <script>
+        $("#id_gram_panchayat").change(function () {
+          var url = $("#PartyForm").attr("data-village-url");  // get the url of the `load_cities` view
+          var gpId = $(this).val();  // get the selected country ID from the HTML input
+          console.log(gpId)
+          $.ajax({                       // initialize an AJAX request
+            url: "{% url 'cm:ajax_load_village'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+            data: {
+              'gram_panchayat': gpId       // add the country id to the GET parameters
+            },
+            success: function (data) {   // `data` is the return of the `load_cities` view function
+              $("#id_village").html(data);  // replace the contents of the city input with the data that came from the server
+            }
+          });
+        });
+      </script>
+
+
+{% endblock %}
+

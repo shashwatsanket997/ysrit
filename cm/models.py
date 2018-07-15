@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.admin.widgets import AdminDateWidget
 from django.core.validators import RegexValidator
+import os
 # Create your models here.
 class Mandal(models.Model):
     mandal=models.CharField(max_length=500)

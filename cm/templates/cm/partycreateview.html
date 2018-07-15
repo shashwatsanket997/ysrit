@@ -20,7 +20,7 @@
 <form class="form-horizontal" method="POST" style="background:#E9ECEF" enctype="multipart/form-data">
     {% csrf_token %}
     {% if error_message %}
-    <p><strong>{{ error_message }}</strong></p>
+    <p><strong><center>{{ error_message }}</center></strong></p>
     {% endif %}
     {% include 'cm/form-template2.html' %}
     <div class="form-group col-sm-4 col-md-3">

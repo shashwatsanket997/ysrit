@@ -14,7 +14,7 @@ urlpatterns = [
     path('create_constency/import',views.constencyimport,name='constency-import'),
     path('create_constency/export',views.constencyexport,name='constency-export'),
     path('logout/',views.logout_user,name="logout"),
-    path('add/',views.PartyCreateView.as_view(),name="person_add"),
+    path('add/',views.PartyCreateView,name="person_add"),
     path('ajax/load-gram-panchayat/',views.load_gram_panchayat,name="ajax_load_gram_panchayat"),
     path('ajax/load-village/',views.load_village,name="ajax_load_village"),
     path('partydata/',views.PartyDatabase.as_view(),name="partydata"),
@@ -24,7 +24,8 @@ urlpatterns = [
     path('partydata/delete/<int:pk>/',views.PartyDelete.as_view(),name="party-delete"),
     path('partydata/export/<str:p_ids>/',views.partyexport,name="partydata-export"),
     path('partydata/export/',views.partycomp,name="database"),
-    path('partydata/export/tel',views.exportTelgue,name="database-tel"),
+    path('partydata/sample/',views.sample_download,name="sample-download"),
+    path('sms',views.sms,name="smsmgt"),
 
 
    

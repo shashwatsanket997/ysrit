@@ -9,7 +9,13 @@ import datetime
 from django.http import HttpResponse
 import csv
 from .resource import PartyResource
-import json
+import codecs
+from django.utils.encoding import  smart_text
+from django.conf import settings
+import os
+import xlwt
+import xlrd
+
 
 
 
@@ -173,11 +179,35 @@ def constencyexport(request):
        
 
 
-class PartyCreateView(CreateView):
-    model=Party
-    template_name="cm/partycreateview.html"
-    form_class=PartyForm
-    success_url=reverse_lazy('cm:person_add')
+def PartyCreateView(request):
+    form = PartyForm(request.POST or None)
+    if form.is_valid():
+        party=form.save(commit=False)
+        name=party.name
+        phone_number=party.phone_number
+        try:
+            obj=Party.objects.get(phone_number=phone_number)
+            if obj:
+                context={
+                    'error_message':'Data already exist',
+                    'form':form
+                }
+                return render(request, 'cm/partycreateview.html', context)
+        except:
+            party.save()
+            context={
+                'error_message':'Data Saved',
+                'form':form
+            }
+            return render(request, 'cm/partycreateview.html', {'form':PartyForm()})
+    else:
+        return render(request, 'cm/partycreateview.html',{'form':form})
+        
+
+    #template_name=""
+    #form_class=PartyForm
+    
+    #success_url=reverse_lazy('cm:person_add')
 
 def load_gram_panchayat(request):
     mandal_id=request.GET.get('mandal')
@@ -284,103 +314,213 @@ def partyimport(request):
         return render(request, "cm/partyimport.html", data)
     else:
         csv_file = request.FILES['csv_file']
-        if not csv_file.name.endswith('.csv'):
-            context={"error_message":["File is not csv type"]}
+        sup_format=['.xlsx','.csv']
+
+        if not (csv_file.name.endswith('.xlsx') or csv_file.name.endswith('.csv') or csv_file.name.endswith('.xls')):
+            context={"error_message":["File is not csv nor xlsx type"]}
             return render(request, "cm/partyimport.html", context)
         if csv_file.multiple_chunks():
             context={"error_message":["Uploaded file is too big."]}
             return render(request, "cm/partyimport.html", context)
-        #CSV file error handled
-        file_data = csv_file.read().decode("utf-8")
-        lines = file_data.split("\n")[1:]
-        updated=[]
-        for line in lines:                        
-            fields = line.split(",")
-            if('' in fields):
-                fields.remove('')
-            if(len(fields)==9):
-                data_dict = {}
-                try:
-                    data_dict["name"] = fields[0].rstrip('\r').title()
-                    data_dict["father_name"] = fields[1].rstrip('\r').title()
-                    #12/5/2015
-                    #12-05-2015
-                    if("/" in fields[2]):
-                        dt=fields[2].split('/')
-                        date=dt[2]+"-"+dt[1]+"-"+dt[0]
-                    else:
-                        date=fields[2]
-                    data_dict["dob"] = date
-                    data_dict["phone_number"] = fields[3].rstrip('\r')
-                    data_dict["booth_number"] = fields[4].rstrip('\r')
-                    mandal=fields[5].rstrip('\r').title()
-                    gp=fields[6].rstrip('\r').title()
-                    village=fields[7].rstrip('\r').title()
-                    print(fields)
+        #CSV file error handle
+        if(csv_file.name.endswith('.csv')):
+            file_data = csv_file.read().decode("utf-8")
+            print(file_data)
+            lines = file_data.split("\n")[1:]
+            updated=[]
+            for line in lines:                        
+                fields = line.split(",") 
+                if('' in fields):
+                    fields.remove('')
+                if(len(fields)==9):
+                    data_dict = {}
+                    try:
+                        data_dict["name"] = fields[0].rstrip('\r').title()
+                        data_dict["father_name"] = fields[1].rstrip('\r').title()
+                            #12/5/2015
+                            #12-05-2015
+                        if("/" in fields[2]):
+                            dt=fields[2].split('/')
+                            date=dt[2]+"-"+dt[1]+"-"+dt[0]
+                        else:
+                            date=fields[2]
+                        data_dict["dob"] = date
+                        data_dict["phone_number"] = fields[3].rstrip('\r')
+                        data_dict["booth_number"] = fields[4].rstrip('\r')
+                        mandal=fields[5].rstrip('\r').title()
+                        gp=fields[6].rstrip('\r').title()
+                        village=fields[7].rstrip('\r').title()
 
-                    try:
-                        f1=Mandal.objects.get(mandal=mandal)
-                    except:
-                        #f1=Mandal(mandal=mandal)
-                        #f1.save()
-                        f1=''
-                        inf="New Mandal found :-->"+mandal
-                        updated.append(inf)
-                    try:
-                        f2=GramPanchayat.objects.get(gp=gp)
-                    except:
-                        #f2=GramPanchayat(mandal=f1,gp=gp)
-                        #f2.save()
-                        f2=''
-                        inf="New GramPanchayat found :-->"+gp+ "for mandal :-->" +mandal
-                        updated.append(inf)
-                    try:
-                        f3=Village.objects.get(village=village)
-                    except:
-                        #f3=Village(gp=f2,village=village)
-                        #f3.save()
-                        f3=''
-                        inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
-                        updated.append(inf)
-                    party_position=fields[8].rstrip("\r").title()
-                    try:
-                        party_position=PartyPosition.objects.get(party_position=party_position)
-                    except:
-                        #party_position=PartyPosition(party_position=party_position)
-                        #party_position.save()
-                        party_position=''
-                        inf="New party positon found:-->"+party_position
-                    if( f1!='' and f2!='' and f3!='' and party_position!=''):
-                        data_dict["mandal"] = f1
-                        data_dict["gram_panchayat"]=f2
-                        data_dict["village"] = f3
-                        data_dict["party_position"]=party_position
                         try:
-                            form=Party.objects.get(name=data_dict['name'] , father_name=data_dict['father_name'] ,dob=data_dict['dob'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
-                            inf="Data already exist"
-                            updated.append(inf)
+                            f1=Mandal.objects.get(mandal=mandal)
                         except:
-                            form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,dob=data_dict['dob'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                #f1=Mandal(mandal=mandal)
+                                #f1.save()
+                            f1=''
+                            inf="New Mandal found :-->"+mandal
+                            updated.append(inf)
+                        try:
+                            f2=GramPanchayat.objects.get(gp=gp)
+                        except:
+                                #f2=GramPanchayat(mandal=f1,gp=gp)
+                                #f2.save()
+                            f2=''
+                            inf="New GramPanchayat found :-->"+gp+ "for mandal :-->" +mandal
+                            updated.append(inf)
+                        try:
+                            f3=Village.objects.get(village=village)
+                        except:
+                                #f3=Village(gp=f2,village=village)
+                                #f3.save()
+                            f3=''
+                            inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
+                            updated.append(inf)
+                        party_position=fields[8].rstrip("\r").title()
+                        try:
+                            party_position=PartyPosition.objects.get(party_position=party_position)
+                        except:
+                                #party_position=PartyPosition(party_position=party_position)
+                                #party_position.save()
+                            party_position=''
+                            inf="New party positon found:-->"+party_position
+                        if( f1!='' and f2!='' and f3!='' and party_position!=''):
+                            data_dict["mandal"] = f1
+                            data_dict["gram_panchayat"]=f2
+                            data_dict["village"] = f3
+                            data_dict["party_position"]=party_position
                             try:
-                                form.save()
-                                inf="Data saved"
+                                form=Party.objects.get(phone_number=data_dict['phone_number'])
+                                inf="Data already exist"
                                 updated.append(inf)
                             except:
-                                inf="Got unexpected error at line number:-->"+str(lines.index(line)+2)
-                                updated.append(inf)
-                    else:
-                        inf="<-------New information recieved please update the information and import it again------->"
+                                form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,dob=data_dict['dob'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                try:
+                                    form.save()
+                                    inf="Data saved"
+                                    updated.append(inf)
+                                except:
+                                    inf="Got unexpected error at line number:-->"+str(lines.index(line)+2)
+                                    updated.append(inf)
+                        else:
+                            inf="<-------New information recieved please update the information and import it again------->"
+                            updated.append(inf)
+                    except:
+                        inf="Got data which is incorrect check DOB,Phone Number at line number:-->"+str(lines.index(line)+1)
                         updated.append(inf)
-                except:
-                    inf="Got data which is incorrect check DOB,Phone Number at line number:-->"+str(lines.index(line)+1)
-                    updated.append(inf)
-        inf="<-------Process Succressfully created------->"
-        updated.append(inf)     
-               
-        context = {
-                    "error_message":updated
-            }
-        return render(request, 'cm/partyimport.html', context)
+            
+            
+            
+
+
+            inf="<-------Process Succressfully created------->"
+            updated.append(inf)     
+                
+            context = {
+                        "error_message":updated
+                }
+            return render(request, 'cm/partyimport.html', context)
+        elif(csv_file.name.endswith('.xlsx') or csv_file.name.endswith('.xls')):
+            book = xlrd.open_workbook(file_contents=csv_file.read())
+            sheet = book.sheet_by_index(0)
+            data=[]
+            for i in range(1,sheet.nrows):
+                data.append(sheet.row_values(i))
+            lines=[i[0] for i in data]
+            updated=[]
+            for line in lines:                        
+                fields = line.split(",") 
+                if('' in fields):
+                    fields.remove('')
+                if(len(fields)==9):
+                    data_dict = {}
+                    try:
+                        data_dict["name"] = fields[0].rstrip('\r').title()
+                        data_dict["father_name"] = fields[1].rstrip('\r').title()
+                                #12/5/2015
+                                #12-05-2015
+                        if("/" in fields[2]):
+                            dt=fields[2].split('/')
+                            date=dt[2]+"-"+dt[1]+"-"+dt[0]
+                        else:
+                            date=fields[2]
+                        data_dict["dob"] = date
+                        data_dict["phone_number"] = fields[3].rstrip('\r')
+                        data_dict["booth_number"] = fields[4].rstrip('\r')
+                        mandal=fields[5].rstrip('\r').title()
+                        gp=fields[6].rstrip('\r').title()
+                        village=fields[7].rstrip('\r').title()
+
+                        try:
+                            f1=Mandal.objects.get(mandal=mandal)
+                        except:
+                                #f1=Mandal(mandal=mandal)
+                                #f1.save()
+                            f1=''
+                            inf="New Mandal found :-->"+mandal
+                            updated.append(inf)
+                        try:
+                            f2=GramPanchayat.objects.get(gp=gp)
+                        except:
+                                #f2=GramPanchayat(mandal=f1,gp=gp)
+                                #f2.save()
+                            f2=''
+                            inf="New GramPanchayat found :-->"+gp+ "for mandal :-->" +mandal
+                            updated.append(inf)
+                        try:
+                            f3=Village.objects.get(village=village)
+                        except:
+                            #f3=Village(gp=f2,village=village)
+                                    #f3.save()
+                            f3=''
+                            inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
+                            updated.append(inf)
+                        party_position=fields[8].rstrip("\r").title()
+                        try:
+                            party_position=PartyPosition.objects.get(party_position=party_position)
+                        except:
+                                    #party_position=PartyPosition(party_position=party_position)
+                                    #party_position.save()
+                            party_position=''
+                            inf="New party positon found:-->"+party_position
+                        if( f1!='' and f2!='' and f3!='' and party_position!=''):
+                            data_dict["mandal"] = f1
+                            data_dict["gram_panchayat"]=f2
+                            data_dict["village"] = f3
+                            data_dict["party_position"]=party_position
+                            try:
+                                form=Party.objects.get(phone_number=data_dict['phone_number'])
+                                inf="Data already exist"
+                                updated.append(inf)
+                            except:
+                                form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,dob=data_dict['dob'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                try:
+                                    form.save()
+                                    inf="Data saved"
+                                    updated.append(inf)
+                                except:
+                                    inf="Got unexpected error at line number:-->"+str(lines.index(line)+2)
+                                    updated.append(inf)
+                        else:
+                            inf="<-------New information recieved please update the information and import it again------->"
+                            updated.append(inf)
+                    except:
+                        inf="Got data which is incorrect check DOB,Phone Number at line number:-->"+str(lines.index(line)+1)
+                        updated.append(inf)
+        
+
+                
+                
+
+
+            inf="<-------Process Succressfully created------->"
+            updated.append(inf)     
+                    
+            context = {
+                            "error_message":updated,
+                }
+            return render(request, 'cm/partyimport.html', context)
+        
+        
 
 def partyexport(request,p_ids):
     data=p_ids
@@ -390,51 +530,182 @@ def partyexport(request,p_ids):
         object_list=[]
         for i in data:
             object_list.append(Party.objects.get(id=i))
-        print(object_list)
-    print(object_list)
-    #dat=json.loads(request.GET.get('list'))
-    #print(type(dat))
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="PartyData.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position'])
-    '''
-    party_resource = PartyResource()
-    dataset = party_resource.export()
-    response = HttpResponse(dataset.csv, content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="persons.csv"'
-    return response'''
-    for i in object_list:
-        data=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
-        writer.writerow(data)
+      
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="PartyData.xls"'
+    wb = xlwt.Workbook(encoding='utf-8')
+    ws = wb.add_sheet('Partydata')
+    row_num = 0
+    font_style = xlwt.XFStyle()
+    font_style.font.bold = True
+    date_format = xlwt.XFStyle()
+    date_format.num_format_str = 'dd/mm/yyyy'
+    columns = ['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    for col_num in range(len(columns)):
+        ws.write(row_num, col_num, columns[col_num], font_style)
+
+    #writer = csv.writer(response)
+    #writer.writerow(['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position'])
+    font_style = xlwt.XFStyle()
+    rows=object_list
+    for i in rows:
+        row=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+        row_num += 1
+        for col_num in range(len(row)):
+            if(col_num==2):
+                ws.write(row_num, col_num, row[col_num], date_format)
+            else:
+                ws.write(row_num, col_num, row[col_num], font_style)
+
+    wb.save(response)
     return response
+
+    #for i in object_list:
+     #   data=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+      #  writer.writerow(data)
+    #return response
 
 def partycomp(request):
     object_list=Party.objects.all()
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="PartyData.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position'])
-    '''
-    party_resource = PartyResource()
-    dataset = party_resource.export()
-    response = HttpResponse(dataset.csv, content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="persons.csv"'
-    return response'''
-    for i in object_list:
-        data=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
-        writer.writerow(data)
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="PartyData.xls"'
+    wb = xlwt.Workbook(encoding='utf-8')
+    ws = wb.add_sheet('Partydata')
+    row_num = 0
+    font_style = xlwt.XFStyle()
+    font_style.font.bold = True
+    date_format = xlwt.XFStyle()
+    date_format.num_format_str = 'dd/mm/yyyy'
+    columns = ['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    for col_num in range(len(columns)):
+        ws.write(row_num, col_num, columns[col_num], font_style)
+    font_style = xlwt.XFStyle()
+    rows=object_list
+    for i in rows:
+        row=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+        row_num += 1
+        for col_num in range(len(row)):
+            if(col_num==2):
+                ws.write(row_num, col_num, row[col_num], date_format)
+            else:
+                ws.write(row_num, col_num, row[col_num], font_style)
+
+    wb.save(response)
     return response
 
     
-def exportTelgue(request):
-    translator = Translator()
-    object_list=Party.objects.all()
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="PartyData.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position'])
+    
+    
+
+
+def get_num(object_list):
+    num=''
     for i in object_list:
-        data=[translator.translate(i.name,dest='te').text,translator.translate(i.father_name,dest='te'),i.dob,i.phone_number,i.booth_number,translator.translate(i.mandal.mandal,dest='te'),translator.translate(i.gram_panchayat.gp,dest='te'),translator.translate(i.village.village,dest='te'),translator.translate(i.party_position.party_position,dest='te')]
-        writer.writerow(data)
+        num=num+","+i.phone_number
+    return(num)
+
+def sms(request):
+    form = FilterForm(request.POST or None)
+    if("filter" in request.POST):
+        form = FilterForm(request.POST or None)
+        if form.is_valid():
+            m1=request.POST.get('mandal')
+            m2=request.POST.get('gram_panchayat')
+            m3=request.POST.get('village')
+            m4=request.POST.get('party_position')
+            #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+            if(m1=='' and m2=='' and m3=='' and m4==''):
+                context={
+                "error_message":"Please choose some option",
+                "form":form, 
+                "object_list":Party.objects.all(),
+                }
+                return render(request, 'cm/smsmgt.html', context)
+            
+            elif(m1=='' and m2=='' and m3=='' and m4!=''):
+                object_list=Party.objects.filter(party_position_id=m4)
+            elif(m1=='' and m2=='' and m3!='' and m4==''):
+                object_list=Party.objects.filter(village_id=m3)
+            elif(m1=='' and m2=='' and m3!='' and m4!=''):
+                object_list=Party.objects.filter(village_id=m3,party_position_id=m4)
+            elif(m1=='' and m2!='' and m3=='' and m4==''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2)
+            elif(m1=='' and m2!='' and m3=='' and m4!=''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4)
+            elif(m1=='' and m2!='' and m3!='' and m4==''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3)
+            elif(m1=='' and m2!='' and m3!='' and m4!=''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+            elif(m1!='' and m2=='' and m3=='' and m4==''):
+                object_list=Party.objects.filter(mandal_id=m1)
+            elif(m1!='' and m2=='' and m3=='' and m4!=''):
+                object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4)
+            elif(m1!='' and m2=='' and m3!='' and m4==''):
+                object_list=Party.objects.filter(mandal_id=m1,village_id=m3)
+            elif(m1!='' and m2=='' and m3!='' and m4!=''):
+                object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4)
+            elif(m1!='' and m2!='' and m3=='' and m4==''):
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2)
+            elif(m1!='' and m2!='' and m3=='' and m4!=''):
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4)
+            elif(m1!='' and m2!='' and m3!='' and m4==''):
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3)
+            else:
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+            num=get_num(object_list) 
+            context={
+                "object_list":Party.objects.all(),
+                "error_message":"You Activated the filter",
+                "form":form,
+                "num":num
+            }
+            return render(request, 'cm/smsmgt.html', context)
+        else:
+            context={
+                "object_list":Party.objects.all(),
+                "form":form ,
+            }
+            return render(request, 'cm/smsmgt.html', context)
+        #return render(request, 'cm/smsmgt.html', context)
+    elif('sms' in request.POST):
+        mob=request.POST.get('mobnos')
+        msg=request.POST.get('msg')
+        mob=mob.rstrip('\r').split(',')
+        null=mob.count('')
+        for i in range(null):
+            mob.remove('')
+        u_mob=[]
+        for i in mob:
+            if(i not in u_mob):
+                if(i.isdigit() and len(i)==10):
+                    u_mob.append(i)
+        count=len(u_mob)
+        print(u_mob)
+        print(msg)
+        context={
+            'object_list':Party.objects.all(),
+            'form':form
+        }
+        return render(request, 'cm/smsmgt.html', context)
+    else:
+        context={
+                "object_list":Party.objects.all(),
+                "form":form ,
+        }
+        return render(request, 'cm/smsmgt.html', context)
+        
+def sample_download(request):
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="PartyData.xls"'
+    wb = xlwt.Workbook(encoding='utf-8')
+    ws = wb.add_sheet('Partydata')
+    row_num = 0
+    font_style = xlwt.XFStyle()
+    font_style.font.bold = True
+    date_format = xlwt.XFStyle()
+    date_format.num_format_str = 'dd/mm/yyyy'
+    columns = ['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    for col_num in range(len(columns)):
+        ws.write(row_num, col_num, columns[col_num], font_style)
+    wb.save(response)
     return response
