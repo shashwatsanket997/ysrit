@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyPosition
+from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyPosition,Smsapi
 
 # Register your models here.
 
@@ -19,3 +19,4 @@ admin.site.register(PartyPosition)
 admin.site.register(Mandal)
 admin.site.register(GramPanchayat)
 admin.site.register(Village)
+admin.site.register(Smsapi)

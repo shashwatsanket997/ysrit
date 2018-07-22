@@ -27,6 +27,12 @@
 <form method="POST" >
         {% csrf_token %}
         <div class="form-group">
+            {% if valid %}
+            {% for i in valid %}
+            <p><strong>{{ i }}</strong></p>
+            {% endfor %}
+            {% endif %}
+
             <label for="mobnos">Mobile Numbers</label>
                 <input type="text" class="form-control" id="mobnos" name="mobnos" required>
               </div>
@@ -35,7 +41,8 @@
                 <textarea class="form-control" rows="8" id="msg" name="msg" required></textarea>
         </div>
         <div class="form-group">
-            <button class="btn btn-success" name="sms">Send SMS</button>
+            <button class="btn btn-success" onclick="encode_utf8()" name="sms">Send SMS</button>
+           
         </div>
 </form>
 {% if num %}
@@ -43,6 +50,23 @@
     document.getElementById('mobnos').value="{{num}}";
 </script>
 {%endif%}
+{% if success_msg %}
+<script>
+alert("{{success_msg}}");
+</script>
+{%endif%}
+<script>
+function encode_utf8()
+{
+var current_msg=document.getElementById('msg').value;
+encode_msg=unescape( encodeURIComponent( current_msg ));
+document.getElementById('msg').value=encode_msg;
+};
+
+
+</script>
+
+
 </div>
 
 </div>

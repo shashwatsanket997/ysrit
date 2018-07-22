@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import logout
 from .forms import ConstencyForm ,PartyForm,FilterForm
-from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyFilter,PartyPosition
+from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyFilter,PartyPosition,Smsapi
 from django.urls import reverse_lazy
 from django.views.generic import ListView,CreateView,UpdateView,DeleteView
 import datetime
@@ -15,6 +15,9 @@ from django.conf import settings
 import os
 import xlwt
 import xlrd
+from datetime import datetime
+import requests as req
+import urllib.parse as u1
 
 
 
@@ -423,15 +426,25 @@ def partyimport(request):
             book = xlrd.open_workbook(file_contents=csv_file.read())
             sheet = book.sheet_by_index(0)
             data=[]
+            p=[]
             for i in range(1,sheet.nrows):
                 data.append(sheet.row_values(i))
-            lines=[i[0] for i in data]
+            
+            for i in data:
+                i[2] = datetime(*xlrd.xldate_as_tuple(i[2], 0))
+                i[2]=i[2].strftime('%d/%m/%Y')
+                   
+                i[3]=str(int(i[3]))
+                i[4]=str(int(i[4]))
+            lines=data
+            
             updated=[]
-            for line in lines:                        
-                fields = line.split(",") 
+            for line in data:                        
+                fields = line 
                 if('' in fields):
                     fields.remove('')
                 if(len(fields)==9):
+                    print("I am here")
                     data_dict = {}
                     try:
                         data_dict["name"] = fields[0].rstrip('\r').title()
@@ -593,11 +606,6 @@ def partycomp(request):
     wb.save(response)
     return response
 
-    
-    
-    
-
-
 def get_num(object_list):
     num=''
     for i in object_list:
@@ -670,21 +678,46 @@ def sms(request):
     elif('sms' in request.POST):
         mob=request.POST.get('mobnos')
         msg=request.POST.get('msg')
+        msg=u1.quote_plus(msg)
+        print(msg)
         mob=mob.rstrip('\r').split(',')
         null=mob.count('')
         for i in range(null):
             mob.remove('')
         u_mob=[]
+        updt=[]
         for i in mob:
             if(i not in u_mob):
                 if(i.isdigit() and len(i)==10):
                     u_mob.append(i)
+                else:
+                    updt.append("Please give valid phone number :-"+str(i))
         count=len(u_mob)
-        print(u_mob)
-        print(msg)
+        sms_api=Smsapi.objects.all()
+        sms_api=str(sms_api[0])
+        sms_api=sms_api.replace('[MESSAGE]',msg)
+        s_count=0
+        send_msg=''
+        not_send=[]
+        for i in u_mob:
+            sms_api=sms_api.replace('[MOBNO]',i)
+            send=req.get(sms_api)
+            send_msg=send.content.decode()
+            sms_api=sms_api.replace(i,'[MOBNO]')
+            print(send_msg)
+            if("SHOOT" in send_msg):
+                s_count=s_count+1
+            else:
+                not_send.append(i)
+        if(s_count!=0):
+            send_msg='Messages sent successfully  '+str(s_count)+"/"+str(count)
+        if(len(not_send)>0):
+            send_msg=send_msg+"\n"+"Message cannot be sent to -->"+str(not_send)
         context={
             'object_list':Party.objects.all(),
-            'form':form
+            'form':form,
+            'success_msg':send_msg,
+            'valid':updt
         }
         return render(request, 'cm/smsmgt.html', context)
     else:

@@ -59,3 +59,8 @@ class PartyFilter(models.Model):
         return self.name
     
 
+class Smsapi(models.Model):
+    sam_api=models.CharField(max_length=250)
+
+    def __str__(self):
+        return self.sam_api
