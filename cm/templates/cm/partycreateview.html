@@ -12,11 +12,13 @@
     </li>
     <li class="breadcrumb-item active">Party DataForm</li>
   </ol>
-    <div class="container" style="background:rgb(117, 174, 231)";></div>
-<h2> Party Data Form    <a  class="btn btn-outline-info" href="{% url 'cm:partydata'%}"  ><span class="fa fa-database"></span>  DataBase</a>  <a  class="btn btn-outline-info" href="{% url 'cm:create-constency'%}"><span class="fa fa-edit"></span>  Create New Constency</a> <a  class="btn btn-outline-info"  href="{% url 'cm:partydata-import' %}" ><span class="fa fa-upload"></span>  Import</a> </h2>
-
-
-
+  <center>
+<h2> <a  class="btn btn-outline-info" href="{% url 'cm:partydata'%}"  ><span class="fa fa-database"></span>  DataBase</a>  <a  class="btn btn-outline-info" href="{% url 'cm:create-constency'%}"><span class="fa fa-edit"></span>  Create New Mandal</a> <a  class="btn btn-outline-info"  href="{% url 'cm:partydata-import' %}" ><span class="fa fa-upload"></span>  Import</a> </h2>
+</center>
+<center>
+<div class="col-sm-6" >
+  <div class="jumbotron"> 
+      <h1 class="display-5">Party Data Form</h1>    
 <form class="form-horizontal" method="POST" style="background:#E9ECEF" enctype="multipart/form-data">
     {% csrf_token %}
     {% if error_message %}
@@ -26,11 +28,14 @@
     <div class="form-group col-sm-4 col-md-3">
     <button type="submit"  class=" btn mx-auto  btn-success ">Submit</button>
     </div>
-</div>
 </form>
 </div>
-
 </div>
+</center>
+</div>
+
+
+
 
 
 

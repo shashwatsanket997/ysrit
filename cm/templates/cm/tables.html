@@ -22,7 +22,7 @@
       {% endif %}
       <a class="btn btn-primary btn-md" href="{% url 'cm:partydata-import' %}"   ><span class="fa fa-upload"></span>  Import</a>
       <a class="btn btn-primary btn-md" href="{% url 'cm:person_add' %}"   ><span class="fa fa-pencil"></span>  Party Data Form</a>
-    
+    <hr>
       <form method="POST" role="form" >
           {% csrf_token %}
           {% if error_message %}

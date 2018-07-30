@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import logout
-from .forms import ConstencyForm ,PartyForm,FilterForm
+from .forms import ConstencyForm ,PartyForm,FilterForm,Partypos
 from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyFilter,PartyPosition,Smsapi
 from django.urls import reverse_lazy
 from django.views.generic import ListView,CreateView,UpdateView,DeleteView
@@ -18,7 +18,9 @@ import xlrd
 from datetime import datetime
 import requests as req
 import urllib.parse as u1
-
+from django.contrib.messages.views import SuccessMessageMixin
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 
 
 
@@ -54,9 +56,7 @@ def logout_user(request):
     logout(request)
     return render(request, 'cm/login.html')
 
-
-
-
+@login_required
 def create_constency(request):
     if not request.user.is_authenticated:
         return render(request, 'cm/login.html')
@@ -106,6 +106,8 @@ def create_constency(request):
     }
     return render(request, 'cm/create_constency.html', context)    
 
+
+@login_required
 def constencyimport(request):
     if not request.user.is_authenticated:
         return render(request, 'cm/login.html')
@@ -169,6 +171,7 @@ def constencyimport(request):
         context={"error_message":["Some unexpected error occured. Please refresh the page"]}
         return render(request, "cm/constencyimport.html", context)
 
+@login_required
 def constencyexport(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="Constencies.csv"'
@@ -181,12 +184,18 @@ def constencyexport(request):
     return(response)
        
 
-
+@login_required
 def PartyCreateView(request):
     form = PartyForm(request.POST or None)
+    if request.method == 'POST':
+        try:
+            profile=request.FILES['profile']
+        except:
+            profile=None
     if form.is_valid():
         party=form.save(commit=False)
         name=party.name
+        party.profile=profile
         phone_number=party.phone_number
         try:
             obj=Party.objects.get(phone_number=phone_number)
@@ -223,11 +232,14 @@ def load_village(request):
     return render(request,'cm/vv.html',{'village':village})
 
 
+
+@method_decorator(login_required, name='dispatch')
 class PartyDatabase(ListView):
     model=Party
     template_name="cm/tables.html"
 
 
+@method_decorator(login_required, name='dispatch')
 class PartyUpdateView(UpdateView):
     model=Party
     template_name="cm/partyupdateview.html"
@@ -237,16 +249,26 @@ class PartyUpdateView(UpdateView):
     def get_context_data(self,**kwargs):
         context=super(PartyUpdateView,self).get_context_data(**kwargs)
         context['pk']=self.object.id
-        print(context['pk'])
         return context
 
-
+@method_decorator(login_required, name='dispatch')
 class PartyDelete(DeleteView):
     model=Party
     success_url=reverse_lazy('cm:partydata')
 
+@method_decorator(login_required, name='dispatch')
+class partypositionC(SuccessMessageMixin,CreateView):
+    model=PartyPosition
+    template_name="cm/partyposition.html"
+    form_class=Partypos
+    success_url=reverse_lazy('cm:partyposC')
+    context_object_name='form'
+    success_message = "Party position was successfully created"
+
+
 object_list=Party.objects.all()
 
+@login_required
 def filter_table(request):
     form = FilterForm(request.POST or None)
     if form.is_valid():
@@ -311,6 +333,8 @@ def filter_table(request):
         }
         return render(request, 'cm/tables.html', context)
 
+
+@login_required
 def partyimport(request):
     data={}
     if "GET" == request.method:
@@ -534,7 +558,7 @@ def partyimport(request):
             return render(request, 'cm/partyimport.html', context)
         
         
-
+@login_required
 def partyexport(request,p_ids):
     data=p_ids
     object_list=Party.objects.all()
@@ -578,6 +602,8 @@ def partyexport(request,p_ids):
       #  writer.writerow(data)
     #return response
 
+
+@login_required
 def partycomp(request):
     object_list=Party.objects.all()
     response = HttpResponse(content_type='application/ms-excel')
@@ -612,6 +638,8 @@ def get_num(object_list):
         num=num+","+i.phone_number
     return(num)
 
+
+@login_required
 def sms(request):
     form = FilterForm(request.POST or None)
     if("filter" in request.POST):
@@ -727,6 +755,8 @@ def sms(request):
         }
         return render(request, 'cm/smsmgt.html', context)
         
+
+@login_required        
 def sample_download(request):
     response = HttpResponse(content_type='application/ms-excel')
     response['Content-Disposition'] = 'attachment; filename="PartyData.xls"'

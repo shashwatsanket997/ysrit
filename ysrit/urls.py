@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('cm/',include('cm.urls')),
     path('',views.index,name="Homepage"),
+    path('login/',views.login_user,name="login"),
 
 ]
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -9,14 +9,14 @@
         <li class="breadcrumb-item">
             <a href="{% url 'cm:cmhome' %}">Contact Management</a>
         </li>
-        <li class="breadcrumb-item active">Create New Mandal</li>
+        <li class="breadcrumb-item active">Create Party Position</li>
       </ol>
 <div class="container" style="background:white";>
     <div class="row">
             <div class="col-sm-11 col-md-12">
             <div class="panel panel-default">
                 <div class="panel-body">
-                    <h3>Create New Mandal &nbsp; <a href="{% url 'cm:constency-import' %}" class="btn btn-info"><span class="fa fa-upload"></span>  Import </a> <a href="{% url 'cm:constency-export' %}" class="btn btn-info"><span class="fa fa-download"></span>  Export </a></h3>
+                    <h3>Create Party Position </h3>
                     {% if error_message %}
                         <ul>
                         {% for i in error_message %}

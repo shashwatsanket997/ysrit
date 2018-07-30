@@ -20,7 +20,7 @@ class Village(models.Model):
     def __str__(self):
         return self.village
 
-class  PartyPosition(models.Model):
+class PartyPosition(models.Model):
     party_position=models.CharField(max_length=100)
     def __str__(self):
         return self.party_position
@@ -33,15 +33,22 @@ class Constency(models.Model):
     def __str__(self):
         return(self.mandal)
 
+GENDER_CHOICES = (
+    ('Male','MALE'),
+    ('Female', 'FEMALE'),
+)
 
 
 class Party(models.Model):
     phone_regex = RegexValidator(regex=r'^\d{10}$', message="Phone number should be up to 10 digits only")
     name=models.CharField(max_length=500)
-    father_name=models.CharField(max_length=500,default='')
+    father_name=models.CharField(max_length=500,null=True,blank=True)
+    gender=models.CharField(max_length=6,choices=GENDER_CHOICES,null=True,blank=True)
     dob=models.DateField(null=True,blank=True)
+    caste=models.CharField(max_length=100,null=True,blank=True)
     phone_number=models.CharField(validators=[phone_regex],max_length=13,default='')
-    booth_number=models.CharField(max_length=10,default='')
+    voter_id=models.CharField(max_length=13,null=True,blank=True)
+    booth_number=models.CharField(max_length=10,null=True,blank=True)
     mandal=models.ForeignKey(Mandal,on_delete=models.SET_NULL,null=True)
     gram_panchayat=models.ForeignKey(GramPanchayat,on_delete=models.SET_NULL,null=True)
     village=models.ForeignKey(Village,on_delete=models.SET_NULL,null=True)

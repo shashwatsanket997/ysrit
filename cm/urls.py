@@ -26,6 +26,7 @@ urlpatterns = [
     path('partydata/export/',views.partycomp,name="database"),
     path('partydata/sample/',views.sample_download,name="sample-download"),
     path('sms',views.sms,name="smsmgt"),
+    path('partyposition/',views.partypositionC.as_view(),name="partyposC"),
 
 
    
