@@ -13,12 +13,12 @@
     <li class="breadcrumb-item active">Party DataForm Update</li>
   </ol>
     <div class="container" style="background:rgb(117, 174, 231)";></div>
-<h2> Party Data Update   <a  class="btn btn-outline-info" href="{% url 'cm:partydata' %}"  >DataBase</a>  <a  class="btn btn-outline-info" href="{% url 'cm:create-constency' %}">Create New Constency</a> </h2>
-<form action="{% url 'cm:party-delete' pk %}" method="post" style="display: inline;">
-  {% csrf_token %}
-  <input type="hidden" name="party_id" value="{{ pk }}"/>
-       <button type="submit" class="btn btn-danger ">Delete
-        </button>
+    <form action="{% url 'cm:party-delete' pk %}" method="post" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="party_id" value="{{ pk }}"/>
+      
+<h2> Party Data Update   <a  class="btn btn-outline-info" href="{% url 'cm:partydata' %}"  >DataBase</a>   <button type="submit" class="btn btn-danger "> Delete
+  </button></h2>
 </form>
 <center>
 <div class="col-sm-6" >

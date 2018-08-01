@@ -27,6 +27,8 @@ urlpatterns = [
     path('partydata/sample/',views.sample_download,name="sample-download"),
     path('sms',views.sms,name="smsmgt"),
     path('partyposition/',views.partypositionC.as_view(),name="partyposC"),
+    path('partydata/gallery/',views.PartyDatabase_photo.as_view(),name="photo_manage"),
+    path('partydata/filter-photo/',views.photo_manage,name="filter_photo"),
 
 
    

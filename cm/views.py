@@ -772,3 +772,75 @@ def sample_download(request):
         ws.write(row_num, col_num, columns[col_num], font_style)
     wb.save(response)
     return response
+
+
+@method_decorator(login_required, name='dispatch')
+class PartyDatabase_photo(ListView):
+    model=Party
+    template_name="cm/photomanagement.html"
+
+
+@login_required
+def photo_manage(request):
+    form = FilterForm(request.POST or None)
+    if form.is_valid():
+        m1=request.POST.get('mandal')
+        m2=request.POST.get('gram_panchayat')
+        m3=request.POST.get('village')
+        m4=request.POST.get('party_position')
+        #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+        if(m1=='' and m2=='' and m3=='' and m4==''):
+            context={
+            "object_list":Party.objects.all(),
+            "error_message":"Please choose some option",
+            "form":form,
+            "p_ids":'None' 
+            }
+            return render(request, 'cm/photomanagement.html', context)
+        
+        elif(m1=='' and m2=='' and m3=='' and m4!=''):
+            object_list=Party.objects.filter(party_position_id=m4)
+        elif(m1=='' and m2=='' and m3!='' and m4==''):
+            object_list=Party.objects.filter(village_id=m3)
+        elif(m1=='' and m2=='' and m3!='' and m4!=''):
+            object_list=Party.objects.filter(village_id=m3,party_position_id=m4)
+        elif(m1=='' and m2!='' and m3=='' and m4==''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2)
+        elif(m1=='' and m2!='' and m3=='' and m4!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4)
+        elif(m1=='' and m2!='' and m3!='' and m4==''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3)
+        elif(m1=='' and m2!='' and m3!='' and m4!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+        elif(m1!='' and m2=='' and m3=='' and m4==''):
+            object_list=Party.objects.filter(mandal_id=m1)
+        elif(m1!='' and m2=='' and m3=='' and m4!=''):
+            object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4)
+        elif(m1!='' and m2=='' and m3!='' and m4==''):
+            object_list=Party.objects.filter(mandal_id=m1,village_id=m3)
+        elif(m1!='' and m2=='' and m3!='' and m4!=''):
+            object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4)
+        elif(m1!='' and m2!='' and m3=='' and m4==''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2)
+        elif(m1!='' and m2!='' and m3=='' and m4!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4)
+        elif(m1!='' and m2!='' and m3!='' and m4==''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3)
+        else:
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+        p_ids=[i.id for i in object_list]  
+        p_ids=str(p_ids) 
+        context={
+            "object_list":object_list,
+            "error_message":"You Activated the filter",
+            "form":form,
+            "p_ids":p_ids
+        }
+        return render(request, 'cm/photomanagement.html', context)
+    else:
+        context={
+            "object_list":Party.objects.all(),
+            "form":form ,
+            "p_ids":"None"
+        }
+        return render(request, 'cm/photomanagement.html', context)
