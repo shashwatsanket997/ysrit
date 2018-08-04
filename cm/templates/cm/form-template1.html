@@ -1,11 +1,15 @@
 {% load widget_tweaks %}
 <div class="row">
 {% for field in form %}
-<div class="form-group col-sm-4 col-md-3">
+<div class="form-group col-sm-4 col-md-3" id="fblock">
         <div class="col-sm-offset-2 col-sm-10">
             <span class="text-danger small">{{ field.errors }}</span>
         </div>
-        {{field.label_tag}}
+        {% if user.is_superuser %}
+            {{field.label_tag}}
+        {% else %}
+           {{field.label_tag}}  
+        {% endif %}
         {% render_field field class="form-control"%}
     </div>
 {% endfor %}

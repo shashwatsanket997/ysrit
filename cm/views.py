@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import logout
-from .forms import ConstencyForm ,PartyForm,FilterForm,Partypos
+from .forms import ConstencyForm ,PartyForm,FilterForm,Partypos,smsapiform
 from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyFilter,PartyPosition,Smsapi
 from django.urls import reverse_lazy
 from django.views.generic import ListView,CreateView,UpdateView,DeleteView
@@ -21,6 +21,7 @@ import urllib.parse as u1
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.contrib.auth.models import Permission,User
 
 
 
@@ -61,6 +62,7 @@ def create_constency(request):
     if not request.user.is_authenticated:
         return render(request, 'cm/login.html')
     form = ConstencyForm(request.POST or None)
+
     if form.is_valid():
         if(form.cleaned_data['mandal'] and form.cleaned_data['gram_panchayat'] and form.cleaned_data['village']):
             mandal=form.cleaned_data['mandal'].title()
@@ -69,23 +71,35 @@ def create_constency(request):
             inf=''
             updated=[]
             try:
-                f1=Mandal.objects.get(mandal=mandal)
+                if(not request.user.is_superuser):
+                    f1=Mandal.objects.get(user=request.user,mandal=mandal)
+                else:
+                    f1=Mandal.objects.get(mandal=mandal)
             except:
-                f1=Mandal(mandal=mandal)
+                f1=Mandal(user=request.user,mandal=mandal)
                 f1.save()
                 inf="New Mandal Created:-->"+mandal
                 updated.append(inf)
             try:
-                f2=GramPanchayat.objects.get(gp=gp)
+                if(not request.user.is_superuser):
+                    f2=GramPanchayat.objects.get(user=request.user,gp=gp)
+                else:
+                    f2=GramPanchayat.objects.get(gp=gp)
+                
             except:
-                f2=GramPanchayat(mandal=f1,gp=gp)
+                f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
                 f2.save()
                 inf="New GramPanchayat Created :-->"+gp+" for Mandal:-->"+f2.mandal.mandal
                 updated.append(inf)
             try:
-                f3=Village.objects.get(village=village)
+                if(not request.user.is_superuser):
+                    f3=Village.objects.get(user=request.user,village=village)
+                else:
+                    f3=Village.objects.get(village=village)
+                
+                
             except:
-                f3=Village(gp=f2,village=village)
+                f3=Village(user=request.user,gp=f2,village=village)
                 f3.save()
                 inf="New Village created :-->"+village+" for GramPanchayat:-->"+f3.gp.gp+" of Mandal:-->"+f2.mandal.mandal
                 updated.append(inf)
@@ -109,8 +123,6 @@ def create_constency(request):
 
 @login_required
 def constencyimport(request):
-    if not request.user.is_authenticated:
-        return render(request, 'cm/login.html')
     data = {}
     if "GET" == request.method:
         return render(request, "cm/constencyimport.html", data)
@@ -136,23 +148,32 @@ def constencyimport(request):
                     gp=fields[1].rstrip('\r').title()
                     village=fields[2].rstrip('\r').title()
                     try:
-                        f1=Mandal.objects.get(mandal=mandal)
+                        if(not request.user.is_superuser):
+                            f1=Mandal.objects.get(user=request.user,mandal=mandal)
+                        else:
+                            f1=Mandal.objects.get(mandal=mandal)
                     except:
-                        f1=Mandal(mandal=mandal)
+                        f1=Mandal(user=request.user,mandal=mandal)
                         f1.save()
                         inf="New Mandal Created:-->"+mandal
                         updated.append(inf)
                     try:
-                        f2=GramPanchayat.objects.get(gp=gp)
+                        if(not request.user.is_superuser):
+                            f2=GramPanchayat.objects.get(user=request.user,gp=gp)
+                        else:
+                            f2=GramPanchayat.objects.get(gp=gp)
                     except:
-                        f2=GramPanchayat(mandal=f1,gp=gp)
+                        f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
                         f2.save()
                         inf="New GramPanchayat Created :-->"+gp+" for Mandal:-->"+f2.mandal.mandal
                         updated.append(inf)
                     try:
-                        f3=Village.objects.get(village=village)
+                        if(not request.user.is_superuser):
+                            f3=Village.objects.get(user=request.user,village=village)
+                        else:
+                            f3=Village.objects.get(village=village)
                     except:
-                        f3=Village(gp=f2,village=village)
+                        f3=Village(user=request.user,gp=f2,village=village)
                         f3.save()
                         inf="New Village created :-->"+village+" for GramPanchayat:-->"+f3.gp.gp+" of Mandal:-->"+f2.mandal.mandal
                         updated.append(inf)
@@ -176,7 +197,10 @@ def constencyexport(request):
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="Constencies.csv"'
     writer = csv.writer(response)
-    obj=Village.objects.all()
+    if(not request.user.is_superuser):
+        obj=Village.objects.filter(user=request.user)
+    else:
+        obj=Village.objects.all()
     writer.writerow(['Mandal','Gram panchayat','Village'])
     for i in obj:
         gp=i.gp
@@ -184,51 +208,84 @@ def constencyexport(request):
     return(response)
        
 
+    
+  
 @login_required
 def PartyCreateView(request):
-    form = PartyForm(request.POST or None)
+    user=request.user
+    
     if request.method == 'POST':
         try:
             profile=request.FILES['profile']
         except:
             profile=None
-    if form.is_valid():
-        party=form.save(commit=False)
-        name=party.name
-        party.profile=profile
-        phone_number=party.phone_number
-        try:
-            obj=Party.objects.get(phone_number=phone_number)
-            if obj:
+        
+        form = PartyForm(request.user,request.POST)
+        if form.is_valid():
+            party=form.save(commit=False)
+            name=party.name
+            party.profile=profile
+            phone_number=party.phone_number
+            party.user=request.user
+            try:
+                obj=Party.objects.get(phone_number=phone_number)
+                if obj:
+                    context={
+                        'error_message':'Data already exist',
+                        'form':form
+                    }
+                    return render(request, 'cm/partycreateview.html', context)
+            except:
+                party.save()
                 context={
-                    'error_message':'Data already exist',
+                    'error_message':'Data Saved',
                     'form':form
                 }
-                return render(request, 'cm/partycreateview.html', context)
-        except:
-            party.save()
-            context={
-                'error_message':'Data Saved',
-                'form':form
-            }
-            return render(request, 'cm/partycreateview.html', {'form':PartyForm()})
+                return render(request, 'cm/partycreateview.html', {'form':PartyForm(request.user)})
     else:
-        return render(request, 'cm/partycreateview.html',{'form':form})
+        return render(request, 'cm/partycreateview.html', {'form':PartyForm(request.user)})
         
 
     #template_name=""
     #form_class=PartyForm
     
     #success_url=reverse_lazy('cm:person_add')
+def load_mandal(request):
+    user_id=request.GET.get('user')
+    user=User.objects.get(pk=user_id)
+    if(not user.is_superuser):  
+        mandal=Mandal.objects.filter(user=user)
+    else:
+        mandal=Mandal.objects.filter()
+    return render(request,'cm/mm.html',{'mandal':mandal})
+
+
+def load_partyposition(request):
+    user_id=request.GET.get('user')
+    user=User.objects.get(pk=user_id)
+    if(not user.is_superuser):
+        partyposition=PartyPosition.objects.filter(user=user)
+    else:
+        partyposition=PartyPosition.objects.all()
+    return render(request,'cm/mm.html',{'partyposition':partyposition})
+
+
 
 def load_gram_panchayat(request):
     mandal_id=request.GET.get('mandal')
-    gram_panchayat=GramPanchayat.objects.filter(mandal_id=mandal_id)
+    if(not request.user.is_superuser):
+        gram_panchayat=GramPanchayat.objects.filter(user=request.user,mandal_id=mandal_id)
+    else:
+        gram_panchayat=GramPanchayat.objects.filter(mandal_id=mandal_id)
     return render(request,'cm/dd.html',{'gram_panchayat':gram_panchayat})
 
 def load_village(request):
     gp_id=request.GET.get('gram_panchayat')
-    village =Village.objects.filter(gp_id=gp_id)
+    if(not request.user.is_superuser):
+        village =Village.objects.filter(user=request.user,gp_id=gp_id)
+    else:
+        village =Village.objects.filter(gp_id=gp_id)
+    
     return render(request,'cm/vv.html',{'village':village})
 
 
@@ -237,6 +294,11 @@ def load_village(request):
 class PartyDatabase(ListView):
     model=Party
     template_name="cm/tables.html"
+    def get_queryset(self):
+        if(not self.request.user.is_superuser):
+            return Party.objects.filter(user=self.request.user)
+        else:
+            return Party.objects.all()
 
 
 @method_decorator(login_required, name='dispatch')
@@ -246,16 +308,23 @@ class PartyUpdateView(UpdateView):
     form_class=PartyForm
     success_url=reverse_lazy('cm:partydata')
     context_object_name='form'
+    def get_form_kwargs(self):
+        kwargs = super(PartyUpdateView, self).get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
     def get_context_data(self,**kwargs):
         context=super(PartyUpdateView,self).get_context_data(**kwargs)
         context['pk']=self.object.id
         return context
+    
 
 @method_decorator(login_required, name='dispatch')
 class PartyDelete(DeleteView):
     model=Party
     success_url=reverse_lazy('cm:partydata')
 
+
+##remove genric views
 @method_decorator(login_required, name='dispatch')
 class partypositionC(SuccessMessageMixin,CreateView):
     model=PartyPosition
@@ -264,13 +333,17 @@ class partypositionC(SuccessMessageMixin,CreateView):
     success_url=reverse_lazy('cm:partyposC')
     context_object_name='form'
     success_message = "Party position was successfully created"
+    def form_valid(self, form):
+         user = self.request.user
+         form.instance.user = user
+         return super(partypositionC, self).form_valid(form)
 
 
 object_list=Party.objects.all()
 
 @login_required
 def filter_table(request):
-    form = FilterForm(request.POST or None)
+    form = FilterForm(request.user,request.POST or None)
     if form.is_valid():
         m1=request.POST.get('mandal')
         m2=request.POST.get('gram_panchayat')
@@ -278,12 +351,20 @@ def filter_table(request):
         m4=request.POST.get('party_position')
         #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
         if(m1=='' and m2=='' and m3=='' and m4==''):
-            context={
-            "object_list":Party.objects.all(),
-            "error_message":"Please choose some option",
-            "form":form,
-            "p_ids":'None' 
-            }
+            if(not request.user.is_superuser):
+                context={
+                "object_list":Party.objects.filter(user=request.user),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
+            else:
+                context={
+                "object_list":Party.objects.all(),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
             return render(request, 'cm/tables.html', context)
         
         elif(m1=='' and m2=='' and m3=='' and m4!=''):
@@ -326,11 +407,19 @@ def filter_table(request):
         }
         return render(request, 'cm/tables.html', context)
     else:
-        context={
-            "object_list":Party.objects.all(),
-            "form":form ,
-            "p_ids":"None"
-        }
+        if(not request.user.is_superuser):
+            context={
+                "object_list":Party.objects.filter(user=request.user),
+                "form":form ,
+                "p_ids":"None"
+            }
+        else:
+            context={
+                "object_list":Party.objects.all(),
+                "form":form ,
+                "p_ids":"None"
+            }
+
         return render(request, 'cm/tables.html', context)
 
 
@@ -561,7 +650,11 @@ def partyimport(request):
 @login_required
 def partyexport(request,p_ids):
     data=p_ids
-    object_list=Party.objects.all()
+    if(not request.user.is_superuser):
+        object_list=Party.objects.filter(user=user)
+    else:
+        object_list=Party.objects.all()
+
     if(data!="" and data!=None and data!="None"):
         data=eval(data)
         object_list=[]
@@ -605,7 +698,10 @@ def partyexport(request,p_ids):
 
 @login_required
 def partycomp(request):
-    object_list=Party.objects.all()
+    if(not request.user.is_superuser):
+        object_list=Party.objects.filter(user=user)
+    else:
+        object_list=Party.objects.all()
     response = HttpResponse(content_type='application/ms-excel')
     response['Content-Disposition'] = 'attachment; filename="PartyData.xls"'
     wb = xlwt.Workbook(encoding='utf-8')
@@ -641,9 +737,9 @@ def get_num(object_list):
 
 @login_required
 def sms(request):
-    form = FilterForm(request.POST or None)
+    form = FilterForm(request.user,request.POST or None)
     if("filter" in request.POST):
-        form = FilterForm(request.POST or None)
+        form = FilterForm(request.user,request.POST or None)
         if form.is_valid():
             m1=request.POST.get('mandal')
             m2=request.POST.get('gram_panchayat')
@@ -651,11 +747,19 @@ def sms(request):
             m4=request.POST.get('party_position')
             #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
             if(m1=='' and m2=='' and m3=='' and m4==''):
-                context={
-                "error_message":"Please choose some option",
-                "form":form, 
-                "object_list":Party.objects.all(),
-                }
+                if(not request.user.is_superuser):
+                    context={
+                    "error_message":"Please choose some option",
+                    "form":form, 
+                    "object_list":Party.objects.filter(user=request.user),
+                    }
+                    
+                else:
+                    context={
+                    "error_message":"Please choose some option",
+                    "form":form, 
+                    "object_list":Party.objects.all(),
+                    }
                 return render(request, 'cm/smsmgt.html', context)
             
             elif(m1=='' and m2=='' and m3=='' and m4!=''):
@@ -688,19 +792,34 @@ def sms(request):
                 object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3)
             else:
                 object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-            num=get_num(object_list) 
-            context={
-                "object_list":Party.objects.all(),
-                "error_message":"You Activated the filter",
-                "form":form,
-                "num":num
-            }
+            num=get_num(object_list)
+            if(not request.user.is_superuser): 
+                context={
+                    "object_list":Party.objects.filter(user=request.user),
+                    "error_message":"You Activated the filter",
+                    "form":form,
+                    "num":num
+                }
+            else:
+                context={
+                    "object_list":Party.objects.all(),
+                    "error_message":"You Activated the filter",
+                    "form":form,
+                    "num":num
+                }
+
             return render(request, 'cm/smsmgt.html', context)
         else:
-            context={
-                "object_list":Party.objects.all(),
-                "form":form ,
-            }
+            if(not request.user.is_superuser):
+                context={
+                    "object_list":Party.objects.filter(user=request.user),
+                    "form":form ,
+                }
+            else:
+                context={
+                    "object_list":Party.objects.all(),
+                    "form":form ,
+                }
             return render(request, 'cm/smsmgt.html', context)
         #return render(request, 'cm/smsmgt.html', context)
     elif('sms' in request.POST):
@@ -721,38 +840,70 @@ def sms(request):
                 else:
                     updt.append("Please give valid phone number :-"+str(i))
         count=len(u_mob)
-        sms_api=Smsapi.objects.all()
-        sms_api=str(sms_api[0])
-        sms_api=sms_api.replace('[MESSAGE]',msg)
-        s_count=0
-        send_msg=''
-        not_send=[]
-        for i in u_mob:
-            sms_api=sms_api.replace('[MOBNO]',i)
-            send=req.get(sms_api)
-            send_msg=send.content.decode()
-            sms_api=sms_api.replace(i,'[MOBNO]')
-            print(send_msg)
-            if("SHOOT" in send_msg):
-                s_count=s_count+1
+        sms_api=Smsapi.objects.filter(user=request.user)
+        if(not len(sms_api)==0):
+            sms_api=str(sms_api[0])
+            sms_api=sms_api.replace('[MESSAGE]',msg)
+            s_count=0
+            send_msg=''
+            not_send=[]
+            for i in u_mob:
+                sms_api=sms_api.replace('[MOBNO]',i)
+                send=req.get(sms_api)
+                send_msg=send.content.decode()
+                sms_api=sms_api.replace(i,'[MOBNO]')
+                print(send_msg)
+                if("SHOOT" in send_msg):
+                    s_count=s_count+1
+                else:
+                    not_send.append(i)
+            if(s_count!=0):
+                send_msg='Messages sent successfully  '+str(s_count)+"/"+str(count)
+            if(len(not_send)>0):
+                send_msg=send_msg+"\n"+"Message cannot be sent to -->"+str(not_send)
+            if(not request.user.is_superuser):
+                context={
+                    'object_list':Party.objects.filter(user=request.user),
+                    'form':form,
+                    'success_msg':send_msg,
+                    'valid':updt
+                }
             else:
-                not_send.append(i)
-        if(s_count!=0):
-            send_msg='Messages sent successfully  '+str(s_count)+"/"+str(count)
-        if(len(not_send)>0):
-            send_msg=send_msg+"\n"+"Message cannot be sent to -->"+str(not_send)
-        context={
-            'object_list':Party.objects.all(),
-            'form':form,
-            'success_msg':send_msg,
-            'valid':updt
-        }
-        return render(request, 'cm/smsmgt.html', context)
+                context={
+                    'object_list':Party.objects.all(),
+                    'form':form,
+                    'success_msg':send_msg,
+                    'valid':updt
+                }
+
+            return render(request, 'cm/smsmgt.html', context)
+        else:
+            updt.append("There is no SMS API set")
+            if(not request.user.is_superuser):
+                context={
+                    'object_list':Party.objects.filter(user=request.user),
+                    'form':form,
+                    'valid':updt
+                }
+            else:
+                context={
+                    'object_list':Party.objects.all(),
+                    'form':form,
+                    'valid':updt
+                }
+            return render(request, 'cm/smsmgt.html', context)
+
     else:
-        context={
-                "object_list":Party.objects.all(),
-                "form":form ,
-        }
+        if(not request.user.is_superuser):
+            context={
+                    'object_list':Party.objects.filter(user=request.user),
+                    "form":form ,
+            }
+        else:
+            context={
+                    "object_list":Party.objects.all(),
+                    "form":form ,
+            }
         return render(request, 'cm/smsmgt.html', context)
         
 
@@ -779,10 +930,17 @@ class PartyDatabase_photo(ListView):
     model=Party
     template_name="cm/photomanagement.html"
 
+    def get_queryset(self):
+        if(not self.request.user.is_superuser):
+            return Party.objects.filter(user=self.request.user)
+        else:
+            return Party.objects.all()
+
+
 
 @login_required
 def photo_manage(request):
-    form = FilterForm(request.POST or None)
+    form = FilterForm(request.user,request.POST or None)
     if form.is_valid():
         m1=request.POST.get('mandal')
         m2=request.POST.get('gram_panchayat')
@@ -790,12 +948,20 @@ def photo_manage(request):
         m4=request.POST.get('party_position')
         #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
         if(m1=='' and m2=='' and m3=='' and m4==''):
-            context={
-            "object_list":Party.objects.all(),
-            "error_message":"Please choose some option",
-            "form":form,
-            "p_ids":'None' 
-            }
+            if(not request.user.is_superuser):
+                context={
+                "object_list":Party.objects.filter(user=request.user),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
+            else:
+                context={
+                "object_list":Party.objects.all(),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
             return render(request, 'cm/photomanagement.html', context)
         
         elif(m1=='' and m2=='' and m3=='' and m4!=''):
@@ -838,9 +1004,31 @@ def photo_manage(request):
         }
         return render(request, 'cm/photomanagement.html', context)
     else:
-        context={
-            "object_list":Party.objects.all(),
-            "form":form ,
-            "p_ids":"None"
-        }
+        if(not request.user.is_superuser):
+            context={
+                "object_list":Party.objects.filter(user=request.user),
+                "form":form ,
+                "p_ids":"None"
+            }
+        else:
+            context={
+                "object_list":Party.objects.all(),
+                "form":form ,
+                "p_ids":"None"
+            }
+
         return render(request, 'cm/photomanagement.html', context)
+
+
+@method_decorator(login_required, name='dispatch')
+class Setsmsapi(CreateView):
+    model=Smsapi
+    template_name="cm/cm_settings.html"
+    form_class=smsapiform
+    success_url=reverse_lazy('cm:cm-settings')
+    context_object_name='form'
+    success_message = "SMS API was successfully created"
+    def form_valid(self, form):
+         user = self.request.user
+         form.instance.user = user
+         return super(Setsmsapi, self).form_valid(form)
