@@ -46,7 +46,7 @@
                   
                   <th>Name</th>
                   <th>Father Name</th>
-                  <th>DOB</th>
+                  <th>AGE</th>
                   <th>Phone Number</th>
                   <th>Mandal</th>
                   <th>Gram Panchayat</th>
@@ -60,7 +60,7 @@
                 <tr>
                   <td><a href="{% url 'cm:update' data.pk %}">{{data.name}}</a></td>
                   <td>{{data.father_name}}</td>
-                  <td>{{data.dob}}</td>
+                  <td>{{data.age}}</td>
                   <td>{{data.phone_number}}</td>
                   <td>{{data.mandal}}</td>
                   <td>{{data.gram_panchayat}}</td>
@@ -82,42 +82,16 @@
 </div>
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
-{% if not user.is_superuser %}
-<script>
-    var x = document.getElementById('id_user')
-    x.value="{{user.id}}" 
-    var y = document.getElementById('fblock').style.display="none";
-    
-</script>
-{% endif %}
-<!--  
-<script>
-    $(document).ready(function(){
-    $("#id_party_position").click(function () {
-      var url = $("#PartyForm").attr("data-pp-url");  // get the url of the `load_cities` view
-      var userId = $("#id_user").val();  // get the selected country ID from the HTML input
-      console.log(userId)
-      $.ajax({                       // initialize an AJAX request
-        url: "{% url 'cm:ajax_load_partyposition'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
-        data: {
-          'user': userId       // add the country id to the GET parameters
-        },
-        success: function (data) {   // `data` is the return of the `load_cities` view function
-          $("#id_party_position").html(data);
-            // replace the contents of the city input with the data that came from the server
-        }
-      });
-    })});
-  </script>
-  
+
+
   
   
   
   
   
 <script>
-      $(document).ready(function(){
-        $("#id_mandal").click(function () {
+      $("#id_user").change(function(){
+       
       var url = $("#PartyForm").attr("data-user-url");  // get the url of the `load_cities` view
       var userId = $("#id_user").val();  // get the selected country ID from the HTML input
       console.log(userId)
@@ -128,12 +102,31 @@
         },
         success: function (data) {   // `data` is the return of the `load_cities` view function
           $("#id_mandal").html(data);
-          console.log(data)  // replace the contents of the city input with the data that came from the server
+            // replace the contents of the city input with the data that came from the server
         }
       });
-    })});
+    });
   </script>
--->
+
+  <script>
+    $("#id_user").change(function(){
+     
+    var url = $("#PartyForm").attr("data-partypostion-url");  // get the url of the `load_cities` view
+    var userId = $("#id_user").val();  // get the selected country ID from the HTML input
+    console.log(userId)
+    $.ajax({                       // initialize an AJAX request
+      url: "{% url 'cm:ajax_load_partyposition'%}",                    // set the url of the request (= localhost:8000/hr/ajax/load-cities/)
+      data: {
+        'user': userId       // add the country id to the GET parameters
+      },
+      success: function (data) {   // `data` is the return of the `load_cities` view function
+        $("#id_party_position").html(data);
+          // replace the contents of the city input with the data that came from the server
+      }
+    });
+  });
+</script>
+
   <script>
     $("#id_mandal").change(function () {
       var url = $("#PartyForm").attr("data-gp-url");  // get the url of the `load_cities` view

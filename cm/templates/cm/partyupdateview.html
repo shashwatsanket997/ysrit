@@ -12,8 +12,7 @@
     </li>
     <li class="breadcrumb-item active">Party DataForm Update</li>
   </ol>
-    <div class="container" style="background:rgb(117, 174, 231)";></div>
-    <form action="{% url 'cm:party-delete' pk %}" method="post" style="display: inline;">
+      <form action="{% url 'cm:party-delete' pk %}" method="post" style="display: inline;">
         {% csrf_token %}
         <input type="hidden" name="party_id" value="{{ pk }}"/>
       

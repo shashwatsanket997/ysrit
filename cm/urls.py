@@ -28,11 +28,19 @@ urlpatterns = [
     path('partydata/export/<str:p_ids>/',views.partyexport,name="partydata-export"),
     path('partydata/export/',views.partycomp,name="database"),
     path('partydata/sample/',views.sample_download,name="sample-download"),
+    path('constency/sample/',views.samplec_download,name="samplec-download"),
     path('sms',views.sms,name="smsmgt"),
     path('partyposition/',views.partypositionC.as_view(),name="partyposC"),
     path('partydata/gallery/',views.PartyDatabase_photo.as_view(),name="photo_manage"),
     path('partydata/filter-photo/',views.photo_manage,name="filter_photo"),
-
+    path('partyposition/update/<int:pk>',views.PartyposUpdateView.as_view(),name="update_party_pos"),
+    path('partyposition/delete/<int:pk>/',views.PartyposDelete.as_view(),name="partyposition-delete"),
+    path('mandal/update/<int:pk>',views.MandalUpdateView.as_view(),name="update_mandal"),
+    path('mandal/delete/<int:pk>/',views.MandalDelete.as_view(),name="mandal-delete"),
+    path('grampanchayat/update/<int:pk>',views.GpUpdateView.as_view(),name="update_gp"),
+    path('grampanchayat/delete/<int:pk>/',views.GpDelete.as_view(),name="gp-delete"),
+    path('village/update/<int:pk>',views.VillageUpdateView.as_view(),name="update_village"),
+    path('village/delete/<int:pk>/',views.VillageDelete.as_view(),name="village-delete"),
 
    
 ]

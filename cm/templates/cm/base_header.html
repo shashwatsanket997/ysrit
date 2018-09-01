@@ -49,18 +49,7 @@
               <a href="{% url 'cm:partydata'%}" >Party Data Database</a>
             </li>
             <li>
-              <a href="#Public Data Form "> Public Data Form</a>
-            </li>
-            <li>
-              <a href="#Public Data Database ">Public Data Database</a>
-            </li>
-            <li>
-                
-              <a href="#Party Data Form ">VIP data form</a>
-            </li>
-            <li>
-                
-              <a href="#Party Data Form ">VIP Data Database</a>
+              <a href="{% url 'cm:partyposC'%}"> New Party Position</a>
             </li>
           </ul>
         
@@ -71,20 +60,18 @@
             <span class="nav-link-text">SMS Management</span>
           </a>
         </li>
-        <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Components">
-          <a class="nav-link nav-link-collapse collapsed" data-toggle="collapse" href="#collapseComponents" data-parent="#exampleAccordion">
-            <i class="fa fa-fw fa-wrench"></i>
-            <span class="nav-link-text">Components</span>
+        <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables">
+          <a class="nav-link" href="{% url 'cm:photo_manage'%}">
+            <i class="fa  fa-file-image-o"></i>
+            <span class="nav-link-text">Photo Management</span>
           </a>
-          <ul class="sidenav-second-level collapse" id="collapseComponents">
-            <li>
-              <a href="navbar.html">Navbar</a>
-            </li>
-            <li>
-              <a href="cards.html">Cards</a>
-            </li>
-          </ul>
         </li>
+        <li class="nav-item" data-toggle="tooltip" data-placement="right" title="Tables">
+          <a class="nav-link" href="{% url 'cm:cm-settings'%}">
+            <i class="fa fa-fw fa fa-commenting-o"></i>
+            <span class="nav-link-text">Settings</span>
+          </a>
+        </li>        
         <!--li class="nav-item" data-toggle="tooltip" data-placement="right" title="Link">
           <a class="nav-link" href="#">
             <i class="fa fa-fw fa-link"></i>

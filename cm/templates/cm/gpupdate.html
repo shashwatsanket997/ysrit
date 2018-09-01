@@ -1,0 +1,52 @@
+{% extends 'cm/base_header.html' %}
+{% block body %}
+<div class="content-wrapper">
+     <!-- Breadcrumbs-->
+  <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'cm:index' %}">Dashboard</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="{% url 'cm:cmhome' %}">Contact Management</a>
+        </li>
+        <li class="breadcrumb-item active">Gram Panchayat Update</li>
+      </ol>
+      
+
+<div class="container" style="background:white";>
+    <div class="row">
+            <div class="col-sm-11 col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <h3>Gram Panchayat Update </h3>
+                    {% if error_message %}
+                        <ul>
+                        {% for i in error_message %}
+                        <li><strong>{{ i }}</strong></li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <form class="form-horizontal" role="form" action="" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {% include 'cm/form-template.html' %}
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-10">
+                                <button type="submit" class="btn btn-success">Submit</button></form>
+                                <form action="{% url 'cm:gp-delete' pk %}" method="post" style="display: inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="party_id" value="{{ pk }}"/>
+                                        <button type="submit" class="btn btn-danger ">&nbsp;<span><i class="fa fa-trash"></i></span>&nbsp;Delete</button></form>
+                            </div>
+                        
+                                
+                    
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+
+
+    

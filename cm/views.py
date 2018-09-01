@@ -1,8 +1,8 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import logout
-from .forms import ConstencyForm ,PartyForm,FilterForm,Partypos,smsapiform
-from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyFilter,PartyPosition,Smsapi
+from .forms import ConstencyForm ,PartyForm,FilterForm,Partypos,smsapiform,Mandal_form,gp_form,village_form
+from .models import Constency,Mandal,GramPanchayat,Village,Party,PartyFilter,PartyPosition,Smsapi,MP
 from django.urls import reverse_lazy
 from django.views.generic import ListView,CreateView,UpdateView,DeleteView
 import datetime
@@ -22,6 +22,20 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.contrib.auth.models import Permission,User
+
+
+
+
+def check_mp(user):
+    try:
+        mp_user=MP.objects.get(mp=user)
+    except MP.DoesNotExist:
+        return ([False,None])
+    constency=mp_user.Constensies.all()
+    return ([True,constency])
+
+
+
 
 
 
@@ -62,7 +76,16 @@ def create_constency(request):
     if not request.user.is_authenticated:
         return render(request, 'cm/login.html')
     form = ConstencyForm(request.POST or None)
-
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
+    if(is_mp):
+        objects_village=Village.objects.filter(user__in=ctnc)
+    elif(request.user.is_superuser):
+        objects_village=Village.objects.all()
+    else:
+        objects_village=Village.objects.filter(user=request.user)
+    
     if form.is_valid():
         if(form.cleaned_data['mandal'] and form.cleaned_data['gram_panchayat'] and form.cleaned_data['village']):
             mandal=form.cleaned_data['mandal'].title()
@@ -71,33 +94,36 @@ def create_constency(request):
             inf=''
             updated=[]
             try:
-                if(not request.user.is_superuser):
-                    f1=Mandal.objects.get(user=request.user,mandal=mandal)
-                else:
+                if(is_mp):
+                    f1=Mandal.objects.get(user__in=ctnc,mandal=mandal)
+                elif(request.user.is_superuser):
                     f1=Mandal.objects.get(mandal=mandal)
+                else:
+                    f1=Mandal.objects.get(user=request.user,mandal=mandal)
             except:
                 f1=Mandal(user=request.user,mandal=mandal)
                 f1.save()
                 inf="New Mandal Created:-->"+mandal
                 updated.append(inf)
             try:
-                if(not request.user.is_superuser):
-                    f2=GramPanchayat.objects.get(user=request.user,gp=gp)
-                else:
+                if(is_mp):
+                    f2=GramPanchayat.objects.get(user__in=ctnc,gp=gp)
+                elif(request.user.is_superuser):
                     f2=GramPanchayat.objects.get(gp=gp)
-                
+                else:
+                    f2=GramPanchayat.objects.get(user=request.user,gp=gp)
             except:
                 f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
                 f2.save()
                 inf="New GramPanchayat Created :-->"+gp+" for Mandal:-->"+f2.mandal.mandal
                 updated.append(inf)
             try:
-                if(not request.user.is_superuser):
-                    f3=Village.objects.get(user=request.user,village=village)
-                else:
+                if(is_mp):
+                    f3=Village.objects.get(user__in=ctnc,village=village)
+                elif(request.user.is_superuser):
                     f3=Village.objects.get(village=village)
-                
-                
+                else:
+                    f3=Village.objects.get(user=request.user,village=village)                
             except:
                 f3=Village(user=request.user,gp=f2,village=village)
                 f3.save()
@@ -108,100 +134,186 @@ def create_constency(request):
             if(inf==''):
                 context={"error_message":['Data already exist'],}
             else:
-                context={"error_message":updated,}
+                context={"error_message":updated,'object_list':objects_village}
             return render(request, 'cm/create_constency.html', context)
         else:   
             context={"error_message":["Please fill all the fields"],
-            "form":form}
+            "form":form,'object_list':objects_village}
             return render(request, 'cm/create_constency.html', context)
             
     context = {
-            "form": form,
+            "form": form,'object_list':objects_village
     }
     return render(request, 'cm/create_constency.html', context)    
 
 
 @login_required
 def constencyimport(request):
+    
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
+    
+    
     data = {}
     if "GET" == request.method:
         return render(request, "cm/constencyimport.html", data)
-    try:
+    else:
         csv_file = request.FILES["csv_file"]
-        if not csv_file.name.endswith('.csv'):
+        if not (csv_file.name.endswith('.xlsx') or csv_file.name.endswith('.csv') or csv_file.name.endswith('.xls')):
             context={"error_message":["File is not csv type"]}
             return render(request, "cm/constencyimport.html", context)
         if csv_file.multiple_chunks():
             context={"error_message":["Uploaded file is too big."]}
             return render(request, "cm/constencyimport.html", context)
-        file_data = csv_file.read().decode("utf-8")
-        lines = file_data.split("\n")[1:]
-        updated=[]
-        for line in lines:
-            inf=''
-            fields = line.split(",")
-            if('' in fields):
-                fields.remove('')
-            if(len(fields)==3):
-                try:
-                    mandal=fields[0].rstrip('\r').title()
-                    gp=fields[1].rstrip('\r').title()
-                    village=fields[2].rstrip('\r').title()
+        if (csv_file.name.endswith('.csv')):
+            file_data = csv_file.read().decode("utf-8")
+            lines = file_data.split("\n")[1:]
+            updated=[]
+            for line in lines:
+                inf=''
+                fields = line.split(",")
+                if('' in fields):
+                    fields.remove('')
+                if(len(fields)==3):
                     try:
-                        if(not request.user.is_superuser):
-                            f1=Mandal.objects.get(user=request.user,mandal=mandal)
-                        else:
-                            f1=Mandal.objects.get(mandal=mandal)
+                        mandal=fields[0].rstrip('\r').title()
+                        gp=fields[1].rstrip('\r').title()
+                        village=fields[2].rstrip('\r').title()
+                        try:
+                            if(is_mp):
+                                f1=Mandal.objects.get(user__in=ctnc,mandal=mandal)
+                            elif(request.user.is_superuser):
+                                f1=Mandal.objects.get(mandal=mandal)
+                            else:
+                                f1=Mandal.objects.get(user=request.user,mandal=mandal)
+                        except:
+                            f1=Mandal(user=request.user,mandal=mandal)
+                            f1.save()
+                            inf="New Mandal Created:-->"+mandal
+                            updated.append(inf)
+                        try:
+                            if(is_mp):
+                                f2=GramPanchayat.objects.get(user__in=ctnc,gp=gp)
+                            elif(request.user.is_superuser):
+                                f2=GramPanchayat.objects.get(gp=gp)
+                            else:
+                                f2=GramPanchayat.objects.get(user=request.user,gp=gp)
+                        except:
+                            f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
+                            f2.save()
+                            inf="New GramPanchayat Created :-->"+gp+" for Mandal:-->"+f2.mandal.mandal
+                            updated.append(inf)
+                        try:
+                            if(is_mp):
+                                f3=Village.objects.get(user__in=ctnc,village=village)
+                            elif(request.user.is_superuser):
+                                f3=Village.objects.get(village=village)
+                            else:
+                                f3=Village.objects.get(user=request.user,village=village)
+                        except:
+                            f3=Village(user=request.user,gp=f2,village=village)
+                            f3.save()
+                            inf="New Village created :-->"+village+" for GramPanchayat:-->"+f3.gp.gp+" of Mandal:-->"+f2.mandal.mandal
+                            updated.append(inf)
+                        if(inf==''):
+                            updated.append("Data already exist:-->"+str(line))
                     except:
-                        f1=Mandal(user=request.user,mandal=mandal)
-                        f1.save()
-                        inf="New Mandal Created:-->"+mandal
-                        updated.append(inf)
-                    try:
-                        if(not request.user.is_superuser):
-                            f2=GramPanchayat.objects.get(user=request.user,gp=gp)
-                        else:
-                            f2=GramPanchayat.objects.get(gp=gp)
-                    except:
-                        f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
-                        f2.save()
-                        inf="New GramPanchayat Created :-->"+gp+" for Mandal:-->"+f2.mandal.mandal
-                        updated.append(inf)
-                    try:
-                        if(not request.user.is_superuser):
-                            f3=Village.objects.get(user=request.user,village=village)
-                        else:
-                            f3=Village.objects.get(village=village)
-                    except:
-                        f3=Village(user=request.user,gp=f2,village=village)
-                        f3.save()
-                        inf="New Village created :-->"+village+" for GramPanchayat:-->"+f3.gp.gp+" of Mandal:-->"+f2.mandal.mandal
-                        updated.append(inf)
-                    if(inf==''):
-                        updated.append("Data already exist:-->"+str(line))
-                except:
+                        updated.append("Got unexpected garbage value or unprocessed value at line number:->"+str(lines.index(line)))
+                        
+                else:
                     updated.append("Got unexpected garbage value or unprocessed value at line number:->"+str(lines.index(line)))
-                    
-            else:
-                updated.append("Got unexpected garbage value or unprocessed value at line number:->"+str(lines.index(line)))
-        updated.append("-----------------Processing Completed-----------------")
-        context={"error_message":updated
-            }
-        return render(request, "cm/constencyimport.html", context)    
-    except:
-        context={"error_message":["Some unexpected error occured. Please refresh the page"]}
-        return render(request, "cm/constencyimport.html", context)
-
+            updated.append("-----------------Processing Completed-----------------")
+            context={"error_message":updated
+                }
+            return render(request, "cm/constencyimport.html", context)    
+        
+        elif(csv_file.name.endswith('.xlsx') or csv_file.name.endswith('.xls')):
+            book = xlrd.open_workbook(file_contents=csv_file.read())
+            sheet = book.sheet_by_index(0)
+            data=[]
+            p=[]
+            for i in range(1,sheet.nrows):
+                data.append(sheet.row_values(i))
+            lines=data
+            
+            updated=[]
+            for line in lines:
+                inf=''
+                fields = line
+                if('' in fields):
+                    fields.remove('')
+                if(len(fields)==3):
+                    try:
+                        mandal=fields[0].rstrip('\r').title()
+                        gp=fields[1].rstrip('\r').title()
+                        village=fields[2].rstrip('\r').title()
+                        try:
+                            if(is_mp):
+                                f1=Mandal.objects.get(user__in=ctnc,mandal=mandal)
+                            elif(request.user.is_superuser):
+                                f1=Mandal.objects.get(mandal=mandal)
+                            else:
+                                f1=Mandal.objects.get(user=request.user,mandal=mandal)
+                        except:
+                            f1=Mandal(user=request.user,mandal=mandal)
+                            f1.save()
+                            inf="New Mandal Created:-->"+mandal
+                            updated.append(inf)
+                        try:
+                            if(is_mp):
+                                f2=GramPanchayat.objects.get(user__in=ctnc,gp=gp)
+                            elif(request.user.is_superuser):
+                                f2=GramPanchayat.objects.get(gp=gp)
+                            else:
+                                f2=GramPanchayat.objects.get(user=request.user,gp=gp)
+                        except:
+                            f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
+                            f2.save()
+                            inf="New GramPanchayat Created :-->"+gp+" for Mandal:-->"+f2.mandal.mandal
+                            updated.append(inf)
+                        try:
+                            if(is_mp):
+                                f3=Village.objects.get(user__in=ctnc,village=village)
+                            elif(request.user.is_superuser):
+                                f3=Village.objects.get(village=village)
+                            else:
+                                f3=Village.objects.get(user=request.user,village=village)
+                        except:
+                            f3=Village(user=request.user,gp=f2,village=village)
+                            f3.save()
+                            inf="New Village created :-->"+village+" for GramPanchayat:-->"+f3.gp.gp+" of Mandal:-->"+f2.mandal.mandal
+                            updated.append(inf)
+                        if(inf==''):
+                            updated.append("Data already exist:-->"+str(line))
+                    except:
+                        updated.append("Got unexpected garbage value or unprocessed value at line number:->"+str(lines.index(line)))
+                            
+                else:
+                    updated.append("Got unexpected garbage value or unprocessed value at line number:->"+str(lines.index(line)))
+            updated.append("-----------------Processing Completed-----------------")
+            context={"error_message":updated
+                }
+            return render(request, "cm/constencyimport.html", context)    
+    
+        
 @login_required
 def constencyexport(request):
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment; filename="Constencies.csv"'
     writer = csv.writer(response)
-    if(not request.user.is_superuser):
-        obj=Village.objects.filter(user=request.user)
-    else:
+
+    if(request.user.is_superuser):
         obj=Village.objects.all()
+    elif(is_mp):
+        obj=Village.objects.filter(user__in=ctnc)
+    else:
+        obj=Village.objects.filter(user=request.user)
     writer.writerow(['Mandal','Gram panchayat','Village'])
+    
     for i in obj:
         gp=i.gp
         writer.writerow([gp.mandal.mandal,gp.gp,i.village])
@@ -253,38 +365,59 @@ def PartyCreateView(request):
 def load_mandal(request):
     user_id=request.GET.get('user')
     user=User.objects.get(pk=user_id)
-    if(not user.is_superuser):  
-        mandal=Mandal.objects.filter(user=user)
+    check=check_mp(user)
+    is_mp=check[0]
+    ctnc=check[1]
+    if(user.is_superuser):
+        mandal=Mandal.objects.all()
+    elif(is_mp):
+        mandal=Mandal.objects.filter(user__in=ctnc)
     else:
-        mandal=Mandal.objects.filter()
+        mandal=Mandal.objects.filter(user=user)
     return render(request,'cm/mm.html',{'mandal':mandal})
 
 
 def load_partyposition(request):
     user_id=request.GET.get('user')
     user=User.objects.get(pk=user_id)
-    if(not user.is_superuser):
-        partyposition=PartyPosition.objects.filter(user=user)
-    else:
+    check=check_mp(user)
+    is_mp=check[0]
+    ctnc=check[1]
+    if(user.is_superuser):
         partyposition=PartyPosition.objects.all()
-    return render(request,'cm/mm.html',{'partyposition':partyposition})
+    elif(is_mp):
+        partyposition=PartyPosition.objects.filter(user__in=ctnc)
+    else:
+        partyposition=PartyPosition.objects.filter(user=user)
+    return render(request,'cm/pp.html',{'partyposition':partyposition})
 
 
 
 def load_gram_panchayat(request):
     mandal_id=request.GET.get('mandal')
-    if(not request.user.is_superuser):
-        gram_panchayat=GramPanchayat.objects.filter(user=request.user,mandal_id=mandal_id)
-    else:
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
+    if(request.user.is_superuser):
         gram_panchayat=GramPanchayat.objects.filter(mandal_id=mandal_id)
+    elif(is_mp):
+        gram_panchayat=GramPanchayat.objects.filter(user__in=ctnc,mandal_id=mandal_id)
+    else:
+        gram_panchayat=GramPanchayat.objects.filter(user=request.user,mandal_id=mandal_id)
+        
     return render(request,'cm/dd.html',{'gram_panchayat':gram_panchayat})
 
 def load_village(request):
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     gp_id=request.GET.get('gram_panchayat')
-    if(not request.user.is_superuser):
-        village =Village.objects.filter(user=request.user,gp_id=gp_id)
-    else:
+    if(request.user.is_superuser):
         village =Village.objects.filter(gp_id=gp_id)
+    elif(is_mp):
+        village =Village.objects.filter(user__in=ctnc,gp_id=gp_id)
+    else:
+        village =Village.objects.filter(user=request.user,gp_id=gp_id)
     
     return render(request,'cm/vv.html',{'village':village})
 
@@ -295,10 +428,16 @@ class PartyDatabase(ListView):
     model=Party
     template_name="cm/tables.html"
     def get_queryset(self):
-        if(not self.request.user.is_superuser):
-            return Party.objects.filter(user=self.request.user)
-        else:
+        check=check_mp(self.request.user)
+        is_mp=check[0]
+        ctnc=check[1]
+        
+        if(self.request.user.is_superuser):
             return Party.objects.all()
+        elif(is_mp):
+            return Party.objects.filter(user__in=ctnc)
+        else:
+            return Party.objects.filter(user=self.request.user)
 
 
 @method_decorator(login_required, name='dispatch')
@@ -337,6 +476,96 @@ class partypositionC(SuccessMessageMixin,CreateView):
          user = self.request.user
          form.instance.user = user
          return super(partypositionC, self).form_valid(form)
+    def get_context_data(self, **kwargs):
+        check=check_mp(self.request.user)
+        is_mp=check[0]
+        ctnc=check[1]
+        context = super(partypositionC, self).get_context_data(**kwargs)
+        if(self.request.user.is_superuser):
+            context['partypos'] =  PartyPosition.objects.all()
+        elif(is_mp):
+            context['partypos'] =  PartyPosition.objects.filter(user__in=ctnc)
+        else:
+            context['partypos'] =  PartyPosition.objects.filter(user=self.request.user)
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class PartyposUpdateView(UpdateView):
+    model=PartyPosition
+    template_name="cm/partypositionupdate.html"
+    form_class=Partypos
+    success_url=reverse_lazy('cm:partyposC')
+    context_object_name='form'
+    def get_context_data(self,**kwargs):
+        context=super(PartyposUpdateView,self).get_context_data(**kwargs)
+        context['pk']=self.object.id
+        return context
+
+
+@method_decorator(login_required, name='dispatch')
+class PartyposDelete(DeleteView):
+    model=PartyPosition
+    success_url=reverse_lazy('cm:partyposC')
+
+
+@method_decorator(login_required, name='dispatch')
+class MandalUpdateView(UpdateView):
+    model=Mandal
+    template_name="cm/mandalupdate.html"
+    form_class=Mandal_form
+    success_url=reverse_lazy('cm:create-constency')
+    context_object_name='form'
+    def get_context_data(self,**kwargs):
+        context=super(MandalUpdateView,self).get_context_data(**kwargs)
+        context['pk']=self.object.id
+        return context
+
+
+
+@method_decorator(login_required, name='dispatch')
+class MandalDelete(DeleteView):
+    model=Mandal
+    success_url=reverse_lazy('cm:create-constency')
+
+@method_decorator(login_required, name='dispatch')
+class GpUpdateView(UpdateView):
+    model=GramPanchayat
+    template_name="cm/gpupdate.html"
+    form_class=gp_form
+    success_url=reverse_lazy('cm:create-constency')
+    context_object_name='form'
+    def get_context_data(self,**kwargs):
+        context=super(GpUpdateView,self).get_context_data(**kwargs)
+        context['pk']=self.object.id
+        return context
+
+
+
+@method_decorator(login_required, name='dispatch')
+class GpDelete(DeleteView):
+    model=GramPanchayat
+    success_url=reverse_lazy('cm:create-constency')
+
+
+@method_decorator(login_required, name='dispatch')
+class VillageUpdateView(UpdateView):
+    model=Village
+    template_name="cm/villageupdate.html"
+    form_class=village_form
+    success_url=reverse_lazy('cm:create-constency')
+    context_object_name='form'
+    def get_context_data(self,**kwargs):
+        context=super(VillageUpdateView,self).get_context_data(**kwargs)
+        context['pk']=self.object.id
+        return context
+
+@method_decorator(login_required, name='dispatch')
+class VillageDelete(DeleteView):
+    model=Village
+    success_url=reverse_lazy('cm:create-constency')
+
+
 
 
 object_list=Party.objects.all()
@@ -344,59 +573,111 @@ object_list=Party.objects.all()
 @login_required
 def filter_table(request):
     form = FilterForm(request.user,request.POST or None)
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     if form.is_valid():
         m1=request.POST.get('mandal')
         m2=request.POST.get('gram_panchayat')
         m3=request.POST.get('village')
         m4=request.POST.get('party_position')
+        m5=request.POST.get('user')
+        if(m5==None):
+            m5=''
         #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-        if(m1=='' and m2=='' and m3=='' and m4==''):
-            if(not request.user.is_superuser):
-                context={
-                "object_list":Party.objects.filter(user=request.user),
-                "error_message":"Please choose some option",
-                "form":form,
-                "p_ids":'None' 
-                }
-            else:
+        if(m1=='' and m2=='' and m3=='' and m4=='' and m5==''):
+            if(request.user.is_superuser):
                 context={
                 "object_list":Party.objects.all(),
                 "error_message":"Please choose some option",
                 "form":form,
                 "p_ids":'None' 
                 }
-            return render(request, 'cm/tables.html', context)
+            elif(is_mp):
+                context={
+                "object_list":Party.objects.filter(user__in=ctnc),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
+            else:
+                context={
+                "object_list":Party.objects.filter(user=request.user),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
+            return render(request, 'cm/photomanagement.html', context)
         
-        elif(m1=='' and m2=='' and m3=='' and m4!=''):
+        elif(m1=='' and m2=='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(party_position_id=m4)
-        elif(m1=='' and m2=='' and m3!='' and m4==''):
+        elif(m1=='' and m2=='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(village_id=m3)
-        elif(m1=='' and m2=='' and m3!='' and m4!=''):
+        elif(m1=='' and m2=='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(village_id=m3,party_position_id=m4)
-        elif(m1=='' and m2!='' and m3=='' and m4==''):
+        elif(m1=='' and m2!='' and m3=='' and m4=='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2)
-        elif(m1=='' and m2!='' and m3=='' and m4!=''):
+        elif(m1=='' and m2!='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4)
-        elif(m1=='' and m2!='' and m3!='' and m4==''):
+        elif(m1=='' and m2!='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3)
-        elif(m1=='' and m2!='' and m3!='' and m4!=''):
+        elif(m1=='' and m2!='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-        elif(m1!='' and m2=='' and m3=='' and m4==''):
+        elif(m1!='' and m2=='' and m3=='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1)
-        elif(m1!='' and m2=='' and m3=='' and m4!=''):
+        elif(m1!='' and m2=='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4)
-        elif(m1!='' and m2=='' and m3!='' and m4==''):
+        elif(m1!='' and m2=='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,village_id=m3)
-        elif(m1!='' and m2=='' and m3!='' and m4!=''):
+        elif(m1!='' and m2=='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4)
-        elif(m1!='' and m2!='' and m3=='' and m4==''):
+        elif(m1!='' and m2!='' and m3=='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2)
-        elif(m1!='' and m2!='' and m3=='' and m4!=''):
+        elif(m1!='' and m2!='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4)
-        elif(m1!='' and m2!='' and m3!='' and m4==''):
+        elif(m1!='' and m2!='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3)
-        else:
+        elif(m1!='' and m2!='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+        elif(m1=='' and m2=='' and m3=='' and m4=='' and m5!=''):
+            user_mp=User.objects.get(pk=m5)
+            check=check_mp(user_mp)
+            is_mp=check[0]
+            ctnc=check[1]
+            if(is_mp):
+                object_list=Party.objects.filter(user__in=ctnc)
+            else:
+                object_list=Party.objects.filter(user=m5)
+        elif(m1=='' and m2=='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(party_position_id=m4,)
+        elif(m1=='' and m2=='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(village_id=m3,)
+        elif(m1=='' and m2=='' and m3!='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(village_id=m3,party_position_id=m4,)
+        elif(m1=='' and m2!='' and m3=='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,)
+        elif(m1=='' and m2!='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4,)
+        elif(m1=='' and m2!='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,)
+        elif(m1=='' and m2!='' and m3!='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4,)
+        elif(m1!='' and m2=='' and m3=='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,)
+        elif(m1!='' and m2=='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4,)
+        elif(m1!='' and m2=='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,village_id=m3,)
+        elif(m1!='' and m2=='' and m3!='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4,)
+        elif(m1!='' and m2!='' and m3=='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,)
+        elif(m1!='' and m2!='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4,)
+        elif(m1!='' and m2!='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,)
+        else:
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4,)
         p_ids=[i.id for i in object_list]  
         p_ids=str(p_ids) 
         context={
@@ -407,19 +688,25 @@ def filter_table(request):
         }
         return render(request, 'cm/tables.html', context)
     else:
-        if(not request.user.is_superuser):
+        if(request.user.is_superuser):
             context={
-                "object_list":Party.objects.filter(user=request.user),
-                "form":form ,
-                "p_ids":"None"
+            "object_list":Party.objects.all(),
+            "form":form,
+            "p_ids":'None' 
+            }
+        elif(is_mp):
+            context={
+            "object_list":Party.objects.filter(user__in=ctnc),
+            "form":form,
+            "p_ids":'None' 
             }
         else:
             context={
-                "object_list":Party.objects.all(),
-                "form":form ,
-                "p_ids":"None"
+            "object_list":Party.objects.filter(user=request.user),
+            "form":form,
+            "p_ids":'None' 
             }
-
+            
         return render(request, 'cm/tables.html', context)
 
 
@@ -448,30 +735,23 @@ def partyimport(request):
                 fields = line.split(",") 
                 if('' in fields):
                     fields.remove('')
-                if(len(fields)==9):
+                if(len(fields)==12):
                     data_dict = {}
                     try:
                         data_dict["name"] = fields[0].rstrip('\r').title()
                         data_dict["father_name"] = fields[1].rstrip('\r').title()
-                            #12/5/2015
-                            #12-05-2015
-                        if("/" in fields[2]):
-                            dt=fields[2].split('/')
-                            date=dt[2]+"-"+dt[1]+"-"+dt[0]
-                        else:
-                            date=fields[2]
-                        data_dict["dob"] = date
-                        data_dict["phone_number"] = fields[3].rstrip('\r')
-                        data_dict["booth_number"] = fields[4].rstrip('\r')
-                        mandal=fields[5].rstrip('\r').title()
-                        gp=fields[6].rstrip('\r').title()
-                        village=fields[7].rstrip('\r').title()
-
+                        data_dict["gender"] = fields[2].rstrip('\r')
+                        data_dict["age"] = fields[3].rstrip('\r')
+                        data_dict["caste"] = fields[4].rstrip('\r')
+                        data_dict["voter_id"] = fields[5].rstrip('\r')
+                        data_dict["phone_number"] = fields[6].rstrip('\r')
+                        data_dict["booth_number"] = fields[7].rstrip('\r')
+                        mandal=fields[8].rstrip('\r').title()
+                        gp=fields[9].rstrip('\r').title()
+                        village=fields[10].rstrip('\r').title()
                         try:
                             f1=Mandal.objects.get(mandal=mandal)
                         except:
-                                #f1=Mandal(mandal=mandal)
-                                #f1.save()
                             f1=''
                             inf="New Mandal found :-->"+mandal
                             updated.append(inf)
@@ -481,7 +761,7 @@ def partyimport(request):
                                 #f2=GramPanchayat(mandal=f1,gp=gp)
                                 #f2.save()
                             f2=''
-                            inf="New GramPanchayat found :-->"+gp+ "for mandal :-->" +mandal
+                            inf="New GramPanchayat found :-->"+gp+ " for mandal :-->" +mandal
                             updated.append(inf)
                         try:
                             f3=Village.objects.get(village=village)
@@ -491,7 +771,7 @@ def partyimport(request):
                             f3=''
                             inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
                             updated.append(inf)
-                        party_position=fields[8].rstrip("\r").title()
+                        party_position=fields[11].rstrip("\r").title()
                         try:
                             party_position=PartyPosition.objects.get(party_position=party_position)
                         except:
@@ -509,7 +789,7 @@ def partyimport(request):
                                 inf="Data already exist"
                                 updated.append(inf)
                             except:
-                                form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,dob=data_dict['dob'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,gender=data_dict['gender'],age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
                                 try:
                                     form.save()
                                     inf="Data saved"
@@ -524,10 +804,6 @@ def partyimport(request):
                         inf="Got data which is incorrect check DOB,Phone Number at line number:-->"+str(lines.index(line)+1)
                         updated.append(inf)
             
-            
-            
-
-
             inf="<-------Process Succressfully created------->"
             updated.append(inf)     
                 
@@ -543,46 +819,40 @@ def partyimport(request):
             for i in range(1,sheet.nrows):
                 data.append(sheet.row_values(i))
             
-            for i in data:
-                i[2] = datetime(*xlrd.xldate_as_tuple(i[2], 0))
-                i[2]=i[2].strftime('%d/%m/%Y')
-                   
+            for i in data:   
                 i[3]=str(int(i[3]))
-                i[4]=str(int(i[4]))
+                i[6]=str(int(i[6]))
+                i[7]=str(int(i[7]))
+
             lines=data
-            
+            print(lines)
             updated=[]
             for line in data:                        
                 fields = line 
                 if('' in fields):
                     fields.remove('')
-                if(len(fields)==9):
-                    print("I am here")
+                if(len(fields)==12):
                     data_dict = {}
                     try:
                         data_dict["name"] = fields[0].rstrip('\r').title()
                         data_dict["father_name"] = fields[1].rstrip('\r').title()
-                                #12/5/2015
-                                #12-05-2015
-                        if("/" in fields[2]):
-                            dt=fields[2].split('/')
-                            date=dt[2]+"-"+dt[1]+"-"+dt[0]
-                        else:
-                            date=fields[2]
-                        data_dict["dob"] = date
-                        data_dict["phone_number"] = fields[3].rstrip('\r')
-                        data_dict["booth_number"] = fields[4].rstrip('\r')
-                        mandal=fields[5].rstrip('\r').title()
-                        gp=fields[6].rstrip('\r').title()
-                        village=fields[7].rstrip('\r').title()
-
+                        data_dict["gender"] = fields[2].rstrip('\r')
+                        data_dict["age"] = fields[3].rstrip('\r')
+                        data_dict["caste"] = fields[4].rstrip('\r')
+                        data_dict["voter_id"] = fields[5].rstrip('\r')
+                        data_dict["phone_number"] = fields[6].rstrip('\r')
+                        data_dict["booth_number"] = fields[7].rstrip('\r')
+                        mandal=fields[8].rstrip('\r').title()
+                        gp=fields[9].rstrip('\r').title()
+                        village=fields[10].rstrip('\r').title()
+                        
                         try:
                             f1=Mandal.objects.get(mandal=mandal)
                         except:
                                 #f1=Mandal(mandal=mandal)
                                 #f1.save()
                             f1=''
-                            inf="New Mandal found :-->"+mandal
+                            inf="New Mandal found :-->"+mandal  
                             updated.append(inf)
                         try:
                             f2=GramPanchayat.objects.get(gp=gp)
@@ -594,13 +864,14 @@ def partyimport(request):
                             updated.append(inf)
                         try:
                             f3=Village.objects.get(village=village)
+    
                         except:
                             #f3=Village(gp=f2,village=village)
                                     #f3.save()
                             f3=''
                             inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
                             updated.append(inf)
-                        party_position=fields[8].rstrip("\r").title()
+                        party_position=fields[11].rstrip("\r").title()
                         try:
                             party_position=PartyPosition.objects.get(party_position=party_position)
                         except:
@@ -618,7 +889,7 @@ def partyimport(request):
                                 inf="Data already exist"
                                 updated.append(inf)
                             except:
-                                form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,dob=data_dict['dob'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                form = Party(name=data_dict['name'] , father_name=data_dict['father_name'] ,gender=data_dict['gender'],age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
                                 try:
                                     form.save()
                                     inf="Data saved"
@@ -632,11 +903,7 @@ def partyimport(request):
                     except:
                         inf="Got data which is incorrect check DOB,Phone Number at line number:-->"+str(lines.index(line)+1)
                         updated.append(inf)
-        
-
-                
-                
-
+    
 
             inf="<-------Process Succressfully created------->"
             updated.append(inf)     
@@ -649,11 +916,16 @@ def partyimport(request):
         
 @login_required
 def partyexport(request,p_ids):
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     data=p_ids
-    if(not request.user.is_superuser):
-        object_list=Party.objects.filter(user=user)
-    else:
+    if(request.user.is_superuser):
         object_list=Party.objects.all()
+    elif(is_mp):
+        object_list=Party.objects.filter(user__in=ctnc)
+    else:
+        object_list=Party.objects.filter(user=request.user)
 
     if(data!="" and data!=None and data!="None"):
         data=eval(data)
@@ -668,9 +940,7 @@ def partyexport(request,p_ids):
     row_num = 0
     font_style = xlwt.XFStyle()
     font_style.font.bold = True
-    date_format = xlwt.XFStyle()
-    date_format.num_format_str = 'dd/mm/yyyy'
-    columns = ['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    columns = ['Name', 'Father Name', 'Gender','Age','Caste','Voter Id', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
 
@@ -679,13 +949,10 @@ def partyexport(request,p_ids):
     font_style = xlwt.XFStyle()
     rows=object_list
     for i in rows:
-        row=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+        row=[i.name,i.father_name,i.gender,i.age,i.caste,i.voter_id,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
         row_num += 1
         for col_num in range(len(row)):
-            if(col_num==2):
-                ws.write(row_num, col_num, row[col_num], date_format)
-            else:
-                ws.write(row_num, col_num, row[col_num], font_style)
+            ws.write(row_num, col_num, row[col_num], font_style)
 
     wb.save(response)
     return response
@@ -698,10 +965,16 @@ def partyexport(request,p_ids):
 
 @login_required
 def partycomp(request):
-    if(not request.user.is_superuser):
-        object_list=Party.objects.filter(user=user)
-    else:
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
+    if(request.user.is_superuser):
         object_list=Party.objects.all()
+    elif(is_mp):
+        object_list=Party.objects.filter(user__in=ctnc)
+    else:
+        object_list=Party.objects.filter(user=request.user)
+    
     response = HttpResponse(content_type='application/ms-excel')
     response['Content-Disposition'] = 'attachment; filename="PartyData.xls"'
     wb = xlwt.Workbook(encoding='utf-8')
@@ -709,23 +982,18 @@ def partycomp(request):
     row_num = 0
     font_style = xlwt.XFStyle()
     font_style.font.bold = True
-    date_format = xlwt.XFStyle()
-    date_format.num_format_str = 'dd/mm/yyyy'
-    columns = ['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    columns = ['Name', 'Father Name', 'Gender','Age','Caste','Voter Id', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
     font_style = xlwt.XFStyle()
     rows=object_list
     for i in rows:
-        row=[i.name,i.father_name,i.dob,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+        row=[i.name,i.father_name,i.gender,i.age,i.caste,i.voter_id,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
         row_num += 1
         for col_num in range(len(row)):
-            if(col_num==2):
-                ws.write(row_num, col_num, row[col_num], date_format)
-            else:
-                ws.write(row_num, col_num, row[col_num], font_style)
-
+            ws.write(row_num, col_num, row[col_num], font_style)
     wb.save(response)
+
     return response
 
 def get_num(object_list):
@@ -735,8 +1003,11 @@ def get_num(object_list):
     return(num)
 
 
-@login_required
+@login_required 
 def sms(request):
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     form = FilterForm(request.user,request.POST or None)
     if("filter" in request.POST):
         form = FilterForm(request.user,request.POST or None)
@@ -745,79 +1016,138 @@ def sms(request):
             m2=request.POST.get('gram_panchayat')
             m3=request.POST.get('village')
             m4=request.POST.get('party_position')
+            m5=request.POST.get('user')
+            if(m5==None):
+                m5=''
             #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-            if(m1=='' and m2=='' and m3=='' and m4==''):
-                if(not request.user.is_superuser):
+            if(m1=='' and m2=='' and m3=='' and m4=='' and m5==''):
+                if(request.user.is_superuser):
                     context={
+                    "object_list":Party.objects.all(),
                     "error_message":"Please choose some option",
                     "form":form, 
-                    "object_list":Party.objects.filter(user=request.user),
                     }
-                    
+                elif(is_mp):
+                    context={
+                    "object_list":Party.objects.filter(user__in=ctnc),
+                    "error_message":"Please choose some option",
+                    "form":form,
+                    }
                 else:
                     context={
+                    "object_list":Party.objects.filter(user=request.user),
                     "error_message":"Please choose some option",
-                    "form":form, 
-                    "object_list":Party.objects.all(),
+                    "form":form,
                     }
+                
                 return render(request, 'cm/smsmgt.html', context)
             
-            elif(m1=='' and m2=='' and m3=='' and m4!=''):
+            elif(m1=='' and m2=='' and m3=='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(party_position_id=m4)
-            elif(m1=='' and m2=='' and m3!='' and m4==''):
+            elif(m1=='' and m2=='' and m3!='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(village_id=m3)
-            elif(m1=='' and m2=='' and m3!='' and m4!=''):
+            elif(m1=='' and m2=='' and m3!='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(village_id=m3,party_position_id=m4)
-            elif(m1=='' and m2!='' and m3=='' and m4==''):
+            elif(m1=='' and m2!='' and m3=='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(gram_panchayat_id=m2)
-            elif(m1=='' and m2!='' and m3=='' and m4!=''):
+            elif(m1=='' and m2!='' and m3=='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4)
-            elif(m1=='' and m2!='' and m3!='' and m4==''):
+            elif(m1=='' and m2!='' and m3!='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3)
-            elif(m1=='' and m2!='' and m3!='' and m4!=''):
+            elif(m1=='' and m2!='' and m3!='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-            elif(m1!='' and m2=='' and m3=='' and m4==''):
+            elif(m1!='' and m2=='' and m3=='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1)
-            elif(m1!='' and m2=='' and m3=='' and m4!=''):
+            elif(m1!='' and m2=='' and m3=='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4)
-            elif(m1!='' and m2=='' and m3!='' and m4==''):
+            elif(m1!='' and m2=='' and m3!='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,village_id=m3)
-            elif(m1!='' and m2=='' and m3!='' and m4!=''):
+            elif(m1!='' and m2=='' and m3!='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4)
-            elif(m1!='' and m2!='' and m3=='' and m4==''):
+            elif(m1!='' and m2!='' and m3=='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2)
-            elif(m1!='' and m2!='' and m3=='' and m4!=''):
+            elif(m1!='' and m2!='' and m3=='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4)
-            elif(m1!='' and m2!='' and m3!='' and m4==''):
+            elif(m1!='' and m2!='' and m3!='' and m4=='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3)
-            else:
+            elif(m1!='' and m2!='' and m3!='' and m4!='' and m5==''):
                 object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-            num=get_num(object_list)
-            if(not request.user.is_superuser): 
-                context={
-                    "object_list":Party.objects.filter(user=request.user),
-                    "error_message":"You Activated the filter",
-                    "form":form,
-                    "num":num
-                }
+            elif(m1=='' and m2=='' and m3=='' and m4=='' and m5!=''):
+                user_mp=User.objects.get(pk=m5)
+                check=check_mp(user_mp)
+                is_mp=check[0]
+                ctnc=check[1]
+                if(is_mp):
+                    object_list=Party.objects.filter(user__in=ctnc)
+                else:
+                    object_list=Party.objects.filter(user=m5)
+            elif(m1=='' and m2=='' and m3=='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(party_position_id=m4,)
+            elif(m1=='' and m2=='' and m3!='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(village_id=m3,)
+            elif(m1=='' and m2=='' and m3!='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(village_id=m3,party_position_id=m4,)
+            elif(m1=='' and m2!='' and m3=='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,)
+            elif(m1=='' and m2!='' and m3=='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4,)
+            elif(m1=='' and m2!='' and m3!='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,)
+            elif(m1=='' and m2!='' and m3!='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4,)
+            elif(m1!='' and m2=='' and m3=='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,)
+            elif(m1!='' and m2=='' and m3=='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4,)
+            elif(m1!='' and m2=='' and m3!='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,village_id=m3,)
+            elif(m1!='' and m2=='' and m3!='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4,)
+            elif(m1!='' and m2!='' and m3=='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,)
+            elif(m1!='' and m2!='' and m3=='' and m4!='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4,)
+            elif(m1!='' and m2!='' and m3!='' and m4=='' and m5!=''):
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,)
             else:
+                object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4,)
+            num=get_num(object_list)
+            if(request.user.is_superuser): 
                 context={
                     "object_list":Party.objects.all(),
                     "error_message":"You Activated the filter",
                     "form":form,
                     "num":num
                 }
-
-            return render(request, 'cm/smsmgt.html', context)
-        else:
-            if(not request.user.is_superuser):
+            elif(is_mp):
+                context={
+                    "object_list":Party.objects.filter(user__in=ctnc),
+                    "error_message":"You Activated the filter",
+                    "form":form,
+                    "num":num
+                }
+            else:
                 context={
                     "object_list":Party.objects.filter(user=request.user),
+                    "error_message":"You Activated the filter",
+                    "form":form,
+                    "num":num
+                }
+            return render(request, 'cm/smsmgt.html', context)
+        else:
+            if(request.user.is_superuser):
+                context={
+                    "object_list":Party.objects.all(),
+                    "form":form ,
+                }
+            elif(is_mp):
+                context={
+                    "object_list":Party.objects.filter(user__in=ctnc),
                     "form":form ,
                 }
             else:
                 context={
-                    "object_list":Party.objects.all(),
+                    "object_list":Party.objects.filter(user=request.user),
                     "form":form ,
                 }
             return render(request, 'cm/smsmgt.html', context)
@@ -861,16 +1191,23 @@ def sms(request):
                 send_msg='Messages sent successfully  '+str(s_count)+"/"+str(count)
             if(len(not_send)>0):
                 send_msg=send_msg+"\n"+"Message cannot be sent to -->"+str(not_send)
-            if(not request.user.is_superuser):
+            if(request.user.is_superuser):
                 context={
-                    'object_list':Party.objects.filter(user=request.user),
+                    'object_list':Party.objects.all(),
+                    'form':form,
+                    'success_msg':send_msg,
+                    'valid':updt
+                }
+            elif(is_mp):
+                context={
+                    'object_list':Party.objects.filter(user__in=ctnc),
                     'form':form,
                     'success_msg':send_msg,
                     'valid':updt
                 }
             else:
                 context={
-                    'object_list':Party.objects.all(),
+                    'object_list':Party.objects.filter(user=request.user),
                     'form':form,
                     'success_msg':send_msg,
                     'valid':updt
@@ -879,29 +1216,40 @@ def sms(request):
             return render(request, 'cm/smsmgt.html', context)
         else:
             updt.append("There is no SMS API set")
-            if(not request.user.is_superuser):
+            if(request.user.is_superuser):
                 context={
-                    'object_list':Party.objects.filter(user=request.user),
+                    'object_list':Party.objects.all(),
+                    'form':form,
+                    'valid':updt
+                }
+            elif(is_mp):
+                context={
+                    'object_list':Party.objects.filter(user__in=ctnc),
                     'form':form,
                     'valid':updt
                 }
             else:
                 context={
-                    'object_list':Party.objects.all(),
+                    'object_list':Party.objects.filter(user=request.user),
                     'form':form,
                     'valid':updt
                 }
             return render(request, 'cm/smsmgt.html', context)
 
     else:
-        if(not request.user.is_superuser):
+        if(request.user.is_superuser):
             context={
-                    'object_list':Party.objects.filter(user=request.user),
+                    'object_list':Party.objects.all(),
+                    "form":form ,
+            }
+        elif(is_mp):
+            context={
+                    'object_list':Party.objects.filter(user__in=ctnc),
                     "form":form ,
             }
         else:
             context={
-                    "object_list":Party.objects.all(),
+                    "object_list":Party.objects.filter(user=request.user),
                     "form":form ,
             }
         return render(request, 'cm/smsmgt.html', context)
@@ -918,7 +1266,7 @@ def sample_download(request):
     font_style.font.bold = True
     date_format = xlwt.XFStyle()
     date_format.num_format_str = 'dd/mm/yyyy'
-    columns = ['Name', 'Father Name', 'DOB', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    columns = ['Name', 'Father Name','Gender', 'Age', 'Caste' ,'Voter Id','Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
     wb.save(response)
@@ -931,69 +1279,126 @@ class PartyDatabase_photo(ListView):
     template_name="cm/photomanagement.html"
 
     def get_queryset(self):
-        if(not self.request.user.is_superuser):
-            return Party.objects.filter(user=self.request.user)
-        else:
+        check=check_mp(self.request.user)
+        is_mp=check[0]
+        ctnc=check[1]
+        if(self.request.user.is_superuser):
             return Party.objects.all()
+        elif(is_mp):
+            return Party.objects.filter(user__in=ctnc)
+        else:
+            return Party.objects.filter(user=self.request.user)
 
 
 
 @login_required
 def photo_manage(request):
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     form = FilterForm(request.user,request.POST or None)
     if form.is_valid():
         m1=request.POST.get('mandal')
         m2=request.POST.get('gram_panchayat')
         m3=request.POST.get('village')
         m4=request.POST.get('party_position')
+        m5=request.POST.get('user')
+        if(m5==None):
+            m5=''
         #object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-        if(m1=='' and m2=='' and m3=='' and m4==''):
-            if(not request.user.is_superuser):
-                context={
-                "object_list":Party.objects.filter(user=request.user),
-                "error_message":"Please choose some option",
-                "form":form,
-                "p_ids":'None' 
-                }
-            else:
+        if(m1=='' and m2=='' and m3=='' and m4=='' and m5==''):
+            if(request.user.is_superuser):
                 context={
                 "object_list":Party.objects.all(),
                 "error_message":"Please choose some option",
                 "form":form,
                 "p_ids":'None' 
                 }
+            elif(is_mp):
+                context={
+                "object_list":Party.objects.filter(user__in=ctnc),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
+            else:
+                context={
+                "object_list":Party.objects.filter(user=request.user),
+                "error_message":"Please choose some option",
+                "form":form,
+                "p_ids":'None' 
+                }
             return render(request, 'cm/photomanagement.html', context)
         
-        elif(m1=='' and m2=='' and m3=='' and m4!=''):
+        elif(m1=='' and m2=='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(party_position_id=m4)
-        elif(m1=='' and m2=='' and m3!='' and m4==''):
+        elif(m1=='' and m2=='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(village_id=m3)
-        elif(m1=='' and m2=='' and m3!='' and m4!=''):
+        elif(m1=='' and m2=='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(village_id=m3,party_position_id=m4)
-        elif(m1=='' and m2!='' and m3=='' and m4==''):
+        elif(m1=='' and m2!='' and m3=='' and m4=='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2)
-        elif(m1=='' and m2!='' and m3=='' and m4!=''):
+        elif(m1=='' and m2!='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4)
-        elif(m1=='' and m2!='' and m3!='' and m4==''):
+        elif(m1=='' and m2!='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3)
-        elif(m1=='' and m2!='' and m3!='' and m4!=''):
+        elif(m1=='' and m2!='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
-        elif(m1!='' and m2=='' and m3=='' and m4==''):
+        elif(m1!='' and m2=='' and m3=='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1)
-        elif(m1!='' and m2=='' and m3=='' and m4!=''):
+        elif(m1!='' and m2=='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4)
-        elif(m1!='' and m2=='' and m3!='' and m4==''):
+        elif(m1!='' and m2=='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,village_id=m3)
-        elif(m1!='' and m2=='' and m3!='' and m4!=''):
+        elif(m1!='' and m2=='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4)
-        elif(m1!='' and m2!='' and m3=='' and m4==''):
+        elif(m1!='' and m2!='' and m3=='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2)
-        elif(m1!='' and m2!='' and m3=='' and m4!=''):
+        elif(m1!='' and m2!='' and m3=='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4)
-        elif(m1!='' and m2!='' and m3!='' and m4==''):
+        elif(m1!='' and m2!='' and m3!='' and m4=='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3)
-        else:
+        elif(m1!='' and m2!='' and m3!='' and m4!='' and m5==''):
             object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4)
+        elif(m1=='' and m2=='' and m3=='' and m4=='' and m5!=''):
+            user_mp=User.objects.get(pk=m5)
+            check=check_mp(user_mp)
+            is_mp=check[0]
+            ctnc=check[1]
+            if(is_mp):
+                object_list=Party.objects.filter(user__in=ctnc)
+            else:
+                object_list=Party.objects.filter(user=m5)
+        elif(m1=='' and m2=='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(party_position_id=m4,)
+        elif(m1=='' and m2=='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(village_id=m3,)
+        elif(m1=='' and m2=='' and m3!='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(village_id=m3,party_position_id=m4,)
+        elif(m1=='' and m2!='' and m3=='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,)
+        elif(m1=='' and m2!='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,party_position_id=m4,)
+        elif(m1=='' and m2!='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,)
+        elif(m1=='' and m2!='' and m3!='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(gram_panchayat_id=m2,village_id=m3,party_position_id=m4,)
+        elif(m1!='' and m2=='' and m3=='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,)
+        elif(m1!='' and m2=='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,party_position_id=m4,)
+        elif(m1!='' and m2=='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,village_id=m3,)
+        elif(m1!='' and m2=='' and m3!='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,village_id=m3,party_position_id=m4,)
+        elif(m1!='' and m2!='' and m3=='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,)
+        elif(m1!='' and m2!='' and m3=='' and m4!='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,party_position_id=m4,)
+        elif(m1!='' and m2!='' and m3!='' and m4=='' and m5!=''):
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,)
+        else:
+            object_list=Party.objects.filter(mandal_id=m1,gram_panchayat_id=m2,village_id=m3,party_position_id=m4,)
         p_ids=[i.id for i in object_list]  
         p_ids=str(p_ids) 
         context={
@@ -1004,15 +1409,21 @@ def photo_manage(request):
         }
         return render(request, 'cm/photomanagement.html', context)
     else:
-        if(not request.user.is_superuser):
+        if(request.user.is_superuser):
             context={
-                "object_list":Party.objects.filter(user=request.user),
+                "object_list":Party.objects.all(),
+                "form":form ,
+                "p_ids":"None"
+            }
+        elif(is_mp):
+            context={
+                "object_list":Party.objects.filter(user__in=ctnc),
                 "form":form ,
                 "p_ids":"None"
             }
         else:
             context={
-                "object_list":Party.objects.all(),
+                "object_list":Party.objects.filter(user=request.user),
                 "form":form ,
                 "p_ids":"None"
             }
@@ -1032,3 +1443,18 @@ class Setsmsapi(CreateView):
          user = self.request.user
          form.instance.user = user
          return super(Setsmsapi, self).form_valid(form)
+
+@login_required        
+def samplec_download(request):
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment; filename="Constencies.xls"'
+    wb = xlwt.Workbook(encoding='utf-8')
+    ws = wb.add_sheet('Constencies')
+    row_num = 0
+    font_style = xlwt.XFStyle()
+    font_style.font.bold = True
+    columns = ['Mandal', 'Gram Panchayat','Village']
+    for col_num in range(len(columns)):
+        ws.write(row_num, col_num, columns[col_num], font_style)
+    wb.save(response)
+    return response

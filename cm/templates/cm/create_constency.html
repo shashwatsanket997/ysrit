@@ -45,4 +45,42 @@
             </div>
         </div>
     </div>
+    <hr>
+    <br>
+        <div class="card mb-6">
+            <div class="card-header">
+              <i class="fa fa-database"></i> DataBase
+           
+            </div>
+              <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                  <thead>
+                    <tr>
+                      
+                      <th>Mandal</th>
+                      <th>Gram Panchayat</th>
+                      <th>Village</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                        {%for data in object_list%}
+                        <tr>
+                        <td><a href="{% url 'cm:update_mandal' data.gp.mandal.pk %}">{{data.gp.mandal}}</a></td>
+                        <td><a href="{% url 'cm:update_gp' data.gp.pk %}">{{data.gp}}</a></td>
+                        <td><a href="{% url 'cm:update_village' data.pk %}">{{data}}</a></td>
+                        </tr>
+                        {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+          </div>
+          <div class="card-footer small text-muted" id="total">YSRIT Database</div>
+        </div>
+
+
+
+    
+
+    </div>
     {% endblock %}
