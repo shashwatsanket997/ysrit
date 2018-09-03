@@ -732,20 +732,18 @@ def partyimport(request):
             lines = file_data.split("\n")[1:]
             updated=[]
             for line in lines:                        
-                fields = line.split(",") 
-                if('' in fields):
-                    fields.remove('')
+                fields = line.split(",")
                 if(len(fields)==12):
                     data_dict = {}
                     try:
                         data_dict["name"] = fields[0].rstrip('\r').title()
                         data_dict["father_name"] = fields[1].rstrip('\r').title()
                         data_dict["gender"] = fields[2].rstrip('\r')
-                        data_dict["age"] = fields[3].rstrip('\r')
+                        data_dict["age"] = str(fields[3].rstrip('\r'))
                         data_dict["caste"] = fields[4].rstrip('\r')
                         data_dict["voter_id"] = fields[5].rstrip('\r')
-                        data_dict["phone_number"] = fields[6].rstrip('\r')
-                        data_dict["booth_number"] = fields[7].rstrip('\r')
+                        data_dict["phone_number"] = str(fields[6].rstrip('\r'))
+                        data_dict["booth_number"] = str(fields[7].rstrip('\r'))
                         mandal=fields[8].rstrip('\r').title()
                         gp=fields[9].rstrip('\r').title()
                         village=fields[10].rstrip('\r').title()
@@ -818,19 +816,11 @@ def partyimport(request):
             p=[]
             for i in range(1,sheet.nrows):
                 data.append(sheet.row_values(i))
-            
-            for i in data:   
-                i[3]=str(int(i[3]))
-                i[6]=str(int(i[6]))
-                i[7]=str(int(i[7]))
-
             lines=data
             print(lines)
             updated=[]
             for line in data:                        
-                fields = line 
-                if('' in fields):
-                    fields.remove('')
+                fields = line
                 if(len(fields)==12):
                     data_dict = {}
                     try:
