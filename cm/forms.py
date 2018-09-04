@@ -18,12 +18,18 @@ class ConstencyForm(forms.ModelForm):
 
     class Meta:
         model = Constency
-        fields = ['mandal', 'gram_panchayat', 'village']
+        fields = ['user','mandal', 'gram_panchayat', 'village']
+    def __init__(self, user, *args, **kwargs):
+        super(ConstencyForm, self).__init__(*args, **kwargs)
+        if(not user.is_superuser):
+            self.fields.pop('user')
+    
+
 
 class PartyForm(forms.ModelForm):
     class Meta:
         model=Party
-        fields=['name','father_name','gender','age','caste','voter_id','phone_number','booth_number','mandal', 'gram_panchayat', 'village','party_position','profile']
+        fields=['user','name','father_name','gender','age','caste','voter_id','phone_number','booth_number','mandal', 'gram_panchayat', 'village','party_position','profile']
         
     def __init__(self, user, *args, **kwargs):
         super(PartyForm, self).__init__(*args, **kwargs)
@@ -35,13 +41,14 @@ class PartyForm(forms.ModelForm):
             self.fields['gram_panchayat'].queryset = GramPanchayat.objects.filter(user__in=ctnc)
             self.fields['village'].queryset = Village.objects.filter(user__in=ctnc)
             self.fields['party_position'].queryset = PartyPosition.objects.filter(user__in=ctnc)
-            
+            self.fields.pop('user')
+
         elif(not user.is_superuser):
             self.fields['mandal'].queryset = Mandal.objects.filter(user=user)
             self.fields['gram_panchayat'].queryset = GramPanchayat.objects.filter(user=user)
             self.fields['village'].queryset = Village.objects.filter(user=user)
             self.fields['party_position'].queryset = PartyPosition.objects.filter(user=user)
-            
+            self.fields.pop('user')
             
                 
 class FilterForm(forms.ModelForm):
@@ -70,7 +77,11 @@ class FilterForm(forms.ModelForm):
 class Partypos(forms.ModelForm):
     class Meta:
         model=PartyPosition
-        fields=['party_position']
+        fields=['user','party_position']
+    def __init__(self, user, *args, **kwargs):
+        super(Partypos, self).__init__(*args, **kwargs)
+        if(not user.is_superuser):
+            self.fields.pop('user')
 
 class Mandal_form(forms.ModelForm):
     class Meta:

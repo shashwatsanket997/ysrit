@@ -9,9 +9,7 @@
             {% if 'Father name' in field.label %}
             <strong>Father name/Husband name:</strong>
             {% else %}
-            {% if 'User' not in field.label %}
         <strong>{{field.label_tag}}</strong>
-        {% endif %}
         {% endif %}
         </div>
         {% if "Dob" in field.label %}

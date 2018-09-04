@@ -16,11 +16,24 @@
   </ol>
     
     <h2> Import Constency Data </h2>
-
+<hr>
+<form id="import-form" action="{% url 'cm:constency-import' %}" method="POST" enctype="multipart/form-data" class="form-horizontal">
+{% if user.is_superuser %}
+<div class="col-md-6">
+    <div class="col-sm-offset-2 col-sm-10">
+        <label for="id_user">Users:</label>
+        <select name="user" id="id_user" class="form-control">
+        {% for i in users %}
+        <option value="{{i.pk}}">{{i}}</option>
+        {% endfor %}    
+        </select>
+    </div>
+</div>
+{% endif%}
   
     
 
-    <form id="import-form" action="{% url 'cm:constency-import' %}" method="POST" enctype="multipart/form-data" class="form-horizontal"> 
+     
         {% csrf_token %}
         {% if error_message %}
         <strong>Results</strong>
