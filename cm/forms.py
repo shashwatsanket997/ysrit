@@ -21,15 +21,21 @@ class ConstencyForm(forms.ModelForm):
         fields = ['user','mandal', 'gram_panchayat', 'village']
     def __init__(self, user, *args, **kwargs):
         super(ConstencyForm, self).__init__(*args, **kwargs)
-        if(not user.is_superuser):
+        check=check_mp(user)
+        is_mp=check[0]
+        ctnc=check[1]
+        if(is_mp):
+            self.fields['user'].queryset=ctnc
+        elif(not (user.is_superuser or is_mp)):
             self.fields.pop('user')
+
     
 
 
 class PartyForm(forms.ModelForm):
     class Meta:
         model=Party
-        fields=['user','name','father_name','gender','age','caste','voter_id','phone_number','booth_number','mandal', 'gram_panchayat', 'village','party_position','profile']
+        fields=['user','name','father_name','age','caste','phone_number','voter_id','booth_number','mandal', 'gram_panchayat', 'village','party_position','profile']
         
     def __init__(self, user, *args, **kwargs):
         super(PartyForm, self).__init__(*args, **kwargs)
@@ -41,7 +47,7 @@ class PartyForm(forms.ModelForm):
             self.fields['gram_panchayat'].queryset = GramPanchayat.objects.filter(user__in=ctnc)
             self.fields['village'].queryset = Village.objects.filter(user__in=ctnc)
             self.fields['party_position'].queryset = PartyPosition.objects.filter(user__in=ctnc)
-            self.fields.pop('user')
+            self.fields['user'].queryset=ctnc
 
         elif(not user.is_superuser):
             self.fields['mandal'].queryset = Mandal.objects.filter(user=user)
@@ -80,7 +86,12 @@ class Partypos(forms.ModelForm):
         fields=['user','party_position']
     def __init__(self, user, *args, **kwargs):
         super(Partypos, self).__init__(*args, **kwargs)
-        if(not user.is_superuser):
+        check=check_mp(user)
+        is_mp=check[0]
+        ctnc=check[1]
+        if(is_mp):
+            self.fields['user'].queryset=ctnc
+        elif(not (user.is_superuser or is_mp)):
             self.fields.pop('user')
 
 class Mandal_form(forms.ModelForm):

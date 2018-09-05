@@ -91,7 +91,7 @@ def create_constency(request):
             mandal=form.cleaned_data['mandal'].title()
             gp=form.cleaned_data['gram_panchayat'].title()
             village=form.cleaned_data['village'].title()
-            if(request.user.is_superuser):
+            if(request.user.is_superuser or is_mp):
                 user_p=form.cleaned_data['user']
             inf=''
             updated=[]
@@ -103,7 +103,7 @@ def create_constency(request):
                 else:
                     f1=Mandal.objects.get(user=request.user,mandal=mandal)
             except:
-                if(request.user.is_superuser):
+                if(request.user.is_superuser or is_mp):
                     f1=Mandal(user=user_p,mandal=mandal)
                 else:    
                     f1=Mandal(user=request.user,mandal=mandal)
@@ -118,7 +118,7 @@ def create_constency(request):
                 else:
                     f2=GramPanchayat.objects.get(user=request.user,gp=gp)
             except:
-                if(request.user.is_superuser):
+                if(request.user.is_superuser or is_mp):
                     f2=GramPanchayat(user=user_p,mandal=f1,gp=gp)
                 else:    
                     f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
@@ -133,7 +133,7 @@ def create_constency(request):
                 else:
                     f3=Village.objects.get(user=request.user,village=village)                
             except:
-                if(request.user.is_superuser):
+                if(request.user.is_superuser or is_mp):
                     f3=Village(user=user_p,gp=f2,village=village)
                 else:    
                     f3=Village(user=request.user,gp=f2,village=village)
@@ -164,8 +164,10 @@ def constencyimport(request):
     check=check_mp(request.user)
     is_mp=check[0]
     ctnc=check[1]
-    if(request.user.is_superuser):
+    if(request.user.is_superuser): # modification
         data = {'users':User.objects.all()}
+    elif(is_mp):
+        data = {'users':ctnc}
     else:
         data={}
 
@@ -173,7 +175,7 @@ def constencyimport(request):
         return render(request, "cm/constencyimport.html", data)
     else:
         csv_file = request.FILES["csv_file"]
-        if(request.user.is_superuser):
+        if(request.user.is_superuser or is_mp):
             user_p=request.POST["user"]
             user_p=User.objects.get(pk=user_p)
         if not (csv_file.name.endswith('.xlsx') or csv_file.name.endswith('.csv') or csv_file.name.endswith('.xls')):
@@ -204,7 +206,7 @@ def constencyimport(request):
                             else:
                                 f1=Mandal.objects.get(user=request.user,mandal=mandal)
                         except:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f1=Mandal(user=user_p,mandal=mandal)
                             else:    
                                 f1=Mandal(user=request.user,mandal=mandal)
@@ -219,7 +221,7 @@ def constencyimport(request):
                             else:
                                 f2=GramPanchayat.objects.get(user=request.user,gp=gp)
                         except:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f2=GramPanchayat(user=user_p,mandal=f1,gp=gp)
                             else:    
                                 f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
@@ -234,7 +236,7 @@ def constencyimport(request):
                             else:
                                 f3=Village.objects.get(user=request.user,village=village)
                         except:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f3=Village(user=user_p,gp=f2,village=village)
                             else:
                                 f3=Village(user=request.user,gp=f2,village=village)
@@ -281,7 +283,7 @@ def constencyimport(request):
                             else:
                                 f1=Mandal.objects.get(user=request.user,mandal=mandal)
                         except:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f1=Mandal(user=user_p,mandal=mandal)
                             else:    
                                 f1=Mandal(user=request.user,mandal=mandal)
@@ -296,7 +298,7 @@ def constencyimport(request):
                             else:
                                 f2=GramPanchayat.objects.get(user=request.user,gp=gp)
                         except:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f2=GramPanchayat(user=user_p,mandal=f1,gp=gp)
                             else:    
                                 f2=GramPanchayat(user=request.user,mandal=f1,gp=gp)
@@ -311,7 +313,7 @@ def constencyimport(request):
                             else:
                                 f3=Village.objects.get(user=request.user,village=village)
                         except:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f3=Village(user=user_p,gp=f2,village=village)
                             else:
                                 f3=Village(user=request.user,gp=f2,village=village)
@@ -359,6 +361,9 @@ def constencyexport(request):
 @login_required
 def PartyCreateView(request):
     user=request.user
+    check=check_mp(user)
+    is_mp=check[0]
+    ctnc=check[1]
     
     if request.method == 'POST':
         try:
@@ -372,7 +377,8 @@ def PartyCreateView(request):
             name=party.name
             party.profile=profile
             phone_number=party.phone_number
-            party.user=request.user
+            if(not (user.is_superuser or is_mp)):
+                party.user=request.user
             try:
                 obj=Party.objects.get(phone_number=phone_number)
                 if obj:
@@ -512,7 +518,10 @@ class partypositionC(SuccessMessageMixin,CreateView):
         return form_kwargs
     
     def form_valid(self, form):
-        if(not self.request.user.is_superuser):
+        check=check_mp(self.request.user)
+        is_mp=check[0]
+        ctnc=check[1]
+        if(not (self.request.user.is_superuser or is_mp)):
             user = self.request.user
             form.instance.user = user
             return super(partypositionC, self).form_valid(form)
@@ -544,7 +553,10 @@ class PartyposUpdateView(UpdateView):
         context=super(PartyposUpdateView,self).get_context_data(**kwargs)
         context['pk']=self.object.id
         return context
-
+    def get_form_kwargs(self, **kwargs):
+        form_kwargs = super(PartyposUpdateView, self).get_form_kwargs(**kwargs)
+        form_kwargs["user"] = self.request.user
+        return form_kwargs
 
 @method_decorator(login_required, name='dispatch')
 class PartyposDelete(DeleteView):
@@ -755,8 +767,13 @@ def filter_table(request):
 
 @login_required
 def partyimport(request):
+    check=check_mp(request.user)
+    is_mp=check[0]
+    ctnc=check[1]
     if(request.user.is_superuser):
         data={'users':User.objects.all()}
+    elif(is_mp):
+        data={'users':ctnc}
     else:
         data={}
     if "GET" == request.method:
@@ -764,7 +781,7 @@ def partyimport(request):
     else:
         csv_file = request.FILES['csv_file']
         sup_format=['.xlsx','.csv']
-        if(request.user.is_superuser):
+        if(request.user.is_superuser or is_mp):
             user_p=request.POST["user"]
             user_p=User.objects.get(pk=user_p)
 
@@ -782,59 +799,67 @@ def partyimport(request):
             updated=[]
             for line in lines:                        
                 fields = line.split(",")
-                if(len(fields)==12):
+                if(len(fields)==11):
                     data_dict = {}
                     try:
                         data_dict["name"] = fields[0].rstrip('\r').title()
                         data_dict["father_name"] = fields[1].rstrip('\r').title()
-                        data_dict["gender"] = fields[2].rstrip('\r')
-                        data_dict["age"] =fields[3].rstrip('\r')
-                        data_dict["caste"] = fields[4].rstrip('\r')
+                        #data_dict["gender"] = fields[2].rstrip('\r')
+                        data_dict["age"] =fields[2].rstrip('\r')
+                        data_dict["caste"] = fields[3].rstrip('\r')
+                        data_dict["phone_number"] = fields[4].rstrip('\r')
                         data_dict["voter_id"] = fields[5].rstrip('\r')
-                        data_dict["phone_number"] = fields[6].rstrip('\r')
-                        data_dict["booth_number"] = fields[7].rstrip('\r')
-                        mandal=fields[8].rstrip('\r').title()
-                        gp=fields[9].rstrip('\r').title()
-                        village=fields[10].rstrip('\r').title()
+                        data_dict["booth_number"] = fields[6].rstrip('\r')
+                        mandal=fields[7].rstrip('\r').title()
+                        gp=fields[8].rstrip('\r').title()
+                        village=fields[9].rstrip('\r').title()
                         try:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f1=Mandal.objects.get(user=user_p,mandal=mandal)
                             else:
                                 f1=Mandal.objects.get(user=request.user,mandal=mandal)
+                            
                         except:
                             f1=''
                             inf="New Mandal found :-->"+mandal
                             updated.append(inf)
                         try:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f2=GramPanchayat.objects.get(user=user_p,gp=gp)
                             else:
                                 f2=GramPanchayat.objects.get(user=request.user,gp=gp)
+                            
                         except:
                                 #f2=GramPanchayat(mandal=f1,gp=gp)
                                 #f2.save()
                             f2=''
                             inf="New GramPanchayat found :-->"+gp+ " for mandal :-->" +mandal
                             updated.append(inf)
+                            
                         try:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f3=Village.objects.get(user=user_p,village=village)
                             else:
                                 f3=Village.objects.get(user=request.user,village=village)
+                            
                         except:
                                 #f3=Village(gp=f2,village=village)
                                 #f3.save()
                             f3=''
                             inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
                             updated.append(inf)
-                        party_position=fields[11].rstrip("\r").title()
+                        party_position=fields[10].rstrip("\r").title()
                         try:
-                            party_position=PartyPosition.objects.get(party_position=party_position)
+                            if(request.user.is_superuser or is_mp):
+                                party_position=PartyPosition.objects.get(user=user_p,party_position=party_position)
+                            else:
+                                party_position=PartyPosition.objects.get(user=request.user,party_position=party_position)
                         except:
                                 #party_position=PartyPosition(party_position=party_position)
                                 #party_position.save()
                             party_position=''
                             inf="New party positon found:-->"+party_position
+                            updated.append(inf)
                         if( f1!='' and f2!='' and f3!='' and party_position!=''):
                             data_dict["mandal"] = f1
                             data_dict["gram_panchayat"]=f2
@@ -845,10 +870,10 @@ def partyimport(request):
                                 inf="Data already exist"
                                 updated.append(inf)
                             except:
-                                if(request.user.is_superuser):
-                                    form = Party(user=user_p,name=data_dict['name'] , father_name=data_dict['father_name'] ,gender=data_dict['gender'],age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])    
+                                if(request.user.is_superuser or is_mp):
+                                    form = Party(user=user_p,name=data_dict['name'] , father_name=data_dict['father_name'] ,age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])    
                                 else:
-                                    form = Party(user=request.user,name=data_dict['name'] , father_name=data_dict['father_name'] ,gender=data_dict['gender'],age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                    form = Party(user=request.user,name=data_dict['name'] , father_name=data_dict['father_name'] ,age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
                                 try:
                                     form.save()
                                     inf="Data saved"
@@ -865,10 +890,20 @@ def partyimport(request):
             
             inf="<-------Process Succressfully created------->"
             updated.append(inf)     
-                
-            context = {
-                        "error_message":updated
-                }
+            if(request.user.is_superuser):     
+                context = {
+                            "error_message":updated,
+                            'users':User.objects.all()
+                    }
+            elif(is_mp):
+                context = {
+                            "error_message":updated,
+                            'users':ctnc
+                    }
+            else:
+                context = {
+                            "error_message":updated,
+                    }
             return render(request, 'cm/partyimport.html', context)
         elif(csv_file.name.endswith('.xlsx') or csv_file.name.endswith('.xls')):
             book = xlrd.open_workbook(file_contents=csv_file.read())
@@ -878,27 +913,26 @@ def partyimport(request):
             for i in range(1,sheet.nrows):
                 data.append(sheet.row_values(i))
             lines=data
-            print(lines)
             updated=[]
             for line in data:                        
                 fields = line
-                if(len(fields)==12):
+                if(len(fields)==11):
                     data_dict = {}
                     try:
                         data_dict["name"] = fields[0].rstrip('\r').title()
                         data_dict["father_name"] = fields[1].rstrip('\r').title()
-                        data_dict["gender"] = fields[2].rstrip('\r')
-                        data_dict["age"] = str(fields[3])
-                        data_dict["caste"] = fields[4].rstrip('\r')
+                        #data_dict["gender"] = fields[2].rstrip('\r')
+                        data_dict["age"] = str(int(fields[2]))
+                        data_dict["caste"] = fields[3].rstrip('\r')
+                        data_dict["phone_number"] = str(int(fields[4]))
                         data_dict["voter_id"] = fields[5].rstrip('\r')
-                        data_dict["phone_number"] = str(fields[6])
-                        data_dict["booth_number"] = str(fields[7])
-                        mandal=fields[8].rstrip('\r').title()
-                        gp=fields[9].rstrip('\r').title()
-                        village=fields[10].rstrip('\r').title()
+                        data_dict["booth_number"] = str(int(fields[6]))
+                        mandal=fields[7].rstrip('\r').title()
+                        gp=fields[8].rstrip('\r').title()
+                        village=fields[9].rstrip('\r').title()
                         
                         try:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f1=Mandal.objects.get(user=user_p,mandal=mandal)
                             else:
                                 f1=Mandal.objects.get(user=request.user,mandal=mandal)
@@ -909,7 +943,7 @@ def partyimport(request):
                             inf="New Mandal found :-->"+mandal  
                             updated.append(inf)
                         try:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f2=GramPanchayat.objects.get(user=user_p,gp=gp)
                             else:
                                 f2=GramPanchayat.objects.get(user=request.user,gp=gp)
@@ -920,7 +954,7 @@ def partyimport(request):
                             inf="New GramPanchayat found :-->"+gp+ "for mandal :-->" +mandal
                             updated.append(inf)
                         try:
-                            if(request.user.is_superuser):
+                            if(request.user.is_superuser or is_mp):
                                 f3=Village.objects.get(user=user_p,village=village)
                             else:
                                 f3=Village.objects.get(user=request.user,village=village)
@@ -931,7 +965,7 @@ def partyimport(request):
                             f3=''
                             inf="New Village found :-->"+village+" for GramPanchayat:-->"+gp+" of Mandal:-->"+mandal
                             updated.append(inf)
-                        party_position=fields[11].rstrip("\r").title()
+                        party_position=fields[10].rstrip("\r").title()
                         try:
                             party_position=PartyPosition.objects.get(party_position=party_position)
                         except:
@@ -949,10 +983,10 @@ def partyimport(request):
                                 inf="Data already exist"
                                 updated.append(inf)
                             except:
-                                if(request.user.is_superuser):
-                                    form = Party(user=user_p,name=data_dict['name'] , father_name=data_dict['father_name'] ,gender=data_dict['gender'],age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])    
+                                if(request.user.is_superuser or is_mp):
+                                    form = Party(user=user_p,name=data_dict['name'] , father_name=data_dict['father_name'] ,age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])    
                                 else:
-                                    form = Party(user=request.user,name=data_dict['name'] , father_name=data_dict['father_name'] ,gender=data_dict['gender'],age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
+                                    form = Party(user=request.user,name=data_dict['name'] , father_name=data_dict['father_name'] ,age=data_dict['age'],caste=data_dict['caste'],voter_id=data_dict['voter_id'],phone_number=data_dict['phone_number'],booth_number=data_dict['booth_number'] ,mandal=data_dict['mandal'] ,gram_panchayat=data_dict['gram_panchayat'],village=data_dict['village'],party_position=data_dict['party_position'])
                                 try:
                                     form.save()
                                     inf="Data saved"
@@ -970,11 +1004,22 @@ def partyimport(request):
     
 
             inf="<-------Process Succressfully created------->"
-            updated.append(inf)     
-                    
-            context = {
+            updated.append(inf)
+            if(request.user.is_superuser):     
+                context = {
                             "error_message":updated,
-                }
+                            'users':User.objects.all()
+                    }
+            elif(is_mp):
+                context = {
+                            "error_message":updated,
+                            'users':ctnc
+                    }
+            else:
+                context = {
+                            "error_message":updated,
+                    }
+
             return render(request, 'cm/partyimport.html', context)
         
         
@@ -1004,7 +1049,7 @@ def partyexport(request,p_ids):
     row_num = 0
     font_style = xlwt.XFStyle()
     font_style.font.bold = True
-    columns = ['Name', 'Father Name', 'Gender','Age','Caste','Voter Id', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    columns = ['Name', 'Father Name','Age','Caste', 'Phone Number','Voter Id','Booth number','Mandal','Gram panchayat','Village','Party position']
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
 
@@ -1013,7 +1058,7 @@ def partyexport(request,p_ids):
     font_style = xlwt.XFStyle()
     rows=object_list
     for i in rows:
-        row=[i.name,i.father_name,i.gender,i.age,i.caste,i.voter_id,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+        row=[i.name,i.father_name,i.age,i.caste,i.phone_number,i.voter_id,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
         row_num += 1
         for col_num in range(len(row)):
             ws.write(row_num, col_num, row[col_num], font_style)
@@ -1046,13 +1091,13 @@ def partycomp(request):
     row_num = 0
     font_style = xlwt.XFStyle()
     font_style.font.bold = True
-    columns = ['Name', 'Father Name', 'Gender','Age','Caste','Voter Id', 'Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    columns = ['Name', 'Father Name','Age','Caste', 'Phone Number','Voter Id','Booth number','Mandal','Gram panchayat','Village','Party position']
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
     font_style = xlwt.XFStyle()
     rows=object_list
     for i in rows:
-        row=[i.name,i.father_name,i.gender,i.age,i.caste,i.voter_id,i.phone_number,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
+        row=[i.name,i.father_name,i.age,i.caste,i.phone_number,i.voter_id,i.booth_number,i.mandal.mandal,i.gram_panchayat.gp,i.village.village,i.party_position.party_position]
         row_num += 1
         for col_num in range(len(row)):
             ws.write(row_num, col_num, row[col_num], font_style)
@@ -1330,7 +1375,7 @@ def sample_download(request):
     font_style.font.bold = True
     date_format = xlwt.XFStyle()
     date_format.num_format_str = 'dd/mm/yyyy'
-    columns = ['Name', 'Father Name','Gender', 'Age', 'Caste' ,'Voter Id','Phone Number','Booth number','Mandal','Gram panchayat','Village','Party position']
+    columns = ['Name', 'Father Name', 'Age', 'Caste' ,'Phone Number','Voter Id','Booth number','Mandal','Gram panchayat','Village','Party position']
     for col_num in range(len(columns)):
         ws.write(row_num, col_num, columns[col_num], font_style)
     wb.save(response)

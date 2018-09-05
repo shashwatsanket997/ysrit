@@ -18,7 +18,7 @@
     <h2> Import Constency Data </h2>
 <hr>
 <form id="import-form" action="{% url 'cm:constency-import' %}" method="POST" enctype="multipart/form-data" class="form-horizontal">
-{% if user.is_superuser %}
+{% if users %}
 <div class="col-md-6">
     <div class="col-sm-offset-2 col-sm-10">
         <label for="id_user">Users:</label>
