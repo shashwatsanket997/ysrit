@@ -797,13 +797,19 @@ def partyimport(request):
                         gp=fields[9].rstrip('\r').title()
                         village=fields[10].rstrip('\r').title()
                         try:
-                            f1=Mandal.objects.get(mandal=mandal)
+                            if(request.user.is_superuser):
+                                f1=Mandal.objects.get(user=user_p,mandal=mandal)
+                            else:
+                                f1=Mandal.objects.get(user=request.user,mandal=mandal)
                         except:
                             f1=''
                             inf="New Mandal found :-->"+mandal
                             updated.append(inf)
                         try:
-                            f2=GramPanchayat.objects.get(gp=gp)
+                            if(request.user.is_superuser):
+                                f2=GramPanchayat.objects.get(user=user_p,gp=gp)
+                            else:
+                                f2=GramPanchayat.objects.get(user=request.user,gp=gp)
                         except:
                                 #f2=GramPanchayat(mandal=f1,gp=gp)
                                 #f2.save()
@@ -811,7 +817,10 @@ def partyimport(request):
                             inf="New GramPanchayat found :-->"+gp+ " for mandal :-->" +mandal
                             updated.append(inf)
                         try:
-                            f3=Village.objects.get(village=village)
+                            if(request.user.is_superuser):
+                                f3=Village.objects.get(user=user_p,village=village)
+                            else:
+                                f3=Village.objects.get(user=request.user,village=village)
                         except:
                                 #f3=Village(gp=f2,village=village)
                                 #f3.save()
@@ -879,17 +888,20 @@ def partyimport(request):
                         data_dict["name"] = fields[0].rstrip('\r').title()
                         data_dict["father_name"] = fields[1].rstrip('\r').title()
                         data_dict["gender"] = fields[2].rstrip('\r')
-                        data_dict["age"] = fields[3].rstrip('\r')
+                        data_dict["age"] = str(fields[3])
                         data_dict["caste"] = fields[4].rstrip('\r')
                         data_dict["voter_id"] = fields[5].rstrip('\r')
-                        data_dict["phone_number"] = fields[6].rstrip('\r')
-                        data_dict["booth_number"] = fields[7].rstrip('\r')
+                        data_dict["phone_number"] = str(fields[6])
+                        data_dict["booth_number"] = str(fields[7])
                         mandal=fields[8].rstrip('\r').title()
                         gp=fields[9].rstrip('\r').title()
                         village=fields[10].rstrip('\r').title()
                         
                         try:
-                            f1=Mandal.objects.get(mandal=mandal)
+                            if(request.user.is_superuser):
+                                f1=Mandal.objects.get(user=user_p,mandal=mandal)
+                            else:
+                                f1=Mandal.objects.get(user=request.user,mandal=mandal)
                         except:
                                 #f1=Mandal(mandal=mandal)
                                 #f1.save()
@@ -897,7 +909,10 @@ def partyimport(request):
                             inf="New Mandal found :-->"+mandal  
                             updated.append(inf)
                         try:
-                            f2=GramPanchayat.objects.get(gp=gp)
+                            if(request.user.is_superuser):
+                                f2=GramPanchayat.objects.get(user=user_p,gp=gp)
+                            else:
+                                f2=GramPanchayat.objects.get(user=request.user,gp=gp)
                         except:
                                 #f2=GramPanchayat(mandal=f1,gp=gp)
                                 #f2.save()
@@ -905,7 +920,10 @@ def partyimport(request):
                             inf="New GramPanchayat found :-->"+gp+ "for mandal :-->" +mandal
                             updated.append(inf)
                         try:
-                            f3=Village.objects.get(village=village)
+                            if(request.user.is_superuser):
+                                f3=Village.objects.get(user=user_p,village=village)
+                            else:
+                                f3=Village.objects.get(user=request.user,village=village)
     
                         except:
                             #f3=Village(gp=f2,village=village)
@@ -945,8 +963,9 @@ def partyimport(request):
                         else:
                             inf="<-------New information recieved please update the information and import it again------->"
                             updated.append(inf)
-                    except:
+                    except Exception as e: 
                         inf="Got data which is incorrect check DOB,Phone Number at line number:-->"+str(lines.index(line)+1)
+                        print(e)
                         updated.append(inf)
     
 
