@@ -10,6 +10,9 @@
       <a href="{% url 'cm:index' %}">Dashboard</a>
     </li>
     <li class="breadcrumb-item">
+            <a href="{% url 'cm:cmhome'%}">Contact Management</a>
+          </li>
+    <li class="breadcrumb-item">
         <a href="{% url 'cm:create-constency' %}">Constency Form</a>
     </li>
     <li class="breadcrumb-item active">Import</li>
@@ -85,4 +88,17 @@ function myFunction(){
 }
 </script>
 
+<script>
+
+    var x= document.getElementsByTagName("label");
+    var len=x.length;
+    for(var i=0;i<len;i++)
+    {
+     if(x[i].innerHTML==="Users:")
+     x[i].innerHTML="Constencies:"; 
+    }
+    
+    </script>
+
 {%endblock%}
+

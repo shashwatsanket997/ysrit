@@ -142,7 +142,17 @@ $.ajax({                       // initialize an AJAX request
     });
   </script>
 
+  <script>
 
+    var x= document.getElementsByTagName("label");
+    var len=x.length;
+    for(var i=0;i<len;i++)
+    {
+     if(x[i].innerHTML==="User:")
+     x[i].innerHTML="Constencies:"; 
+    }
+    
+    </script>
 
 
 {% endblock %}

@@ -16,7 +16,7 @@
         {% csrf_token %}
         <input type="hidden" name="party_id" value="{{ pk }}"/>
       
-<h2> Party Data Update   <a  class="btn btn-outline-info" href="{% url 'cm:partydata' %}"  >DataBase</a>   <button type="submit" class="btn btn-danger "> Delete
+<h2> Party Data Update   <a  class="btn btn-outline-info" href="{% url 'cm:partydata' %}"  >DataBase</a>   <button type="submit" class="btn btn-danger "> <i class="fa fa-trash"></i>&nbsp;Delete
   </button></h2>
 </form>
 <center>
@@ -45,12 +45,7 @@
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
 
-<script>
-    var x = document.getElementById('id_user')
-    x.value="{{user.id}}" 
-    x.style.display="none";
-    
-  </script>
+
   
   <script>
     $(document).ready(function(){
@@ -130,4 +125,18 @@
       });
     });
   </script>
+
+  <script>
+
+    var x= document.getElementsByTagName("label");
+    var len=x.length;
+    for(var i=0;i<len;i++)
+    {
+     if(x[i].innerHTML==="User:")
+     x[i].innerHTML="Constencies:"; 
+    }
+    
+    </script>
+
+
   {%endblock%}
