@@ -61,7 +61,7 @@
                   <td><a href="{% url 'cm:update' data.pk %}">{{data.name}}</a></td>
                   <td>{{data.father_name}}</td>
                   <td>{{data.age}}</td>
-                  <td>{{data.phone_number}}</td>
+                  <td><a href="tel:{{data.phone_number}}">{{data.phone_number}}</a></td>
                   <td>{{data.mandal}}</td>
                   <td>{{data.gram_panchayat}}</td>
                   <td>{{data.village}}</td>

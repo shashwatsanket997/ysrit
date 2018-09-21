@@ -95,7 +95,7 @@ document.getElementById('msg').value=encode_msg;
                 <tr>
                   <td><input type="checkbox" name="slct" id="slct" value="{{data.pk}}"</td>
                   <td>{{data.name}}</td>
-                  <td>{{data.phone_number}}</td>
+                  <td><a href="tel:{{data.phone_number}}">{{data.phone_number}}</a></td>
                   </tr>
                 {%endfor%}
               </tbody>
